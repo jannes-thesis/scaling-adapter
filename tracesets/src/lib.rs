@@ -35,6 +35,7 @@ pub struct SyscallData {
 }
 
 impl Traceset {
+    // create a new traceset, returns None on failure
     pub fn new(targets: &[i32], syscalls: &[i32]) -> Option<Traceset> {
         unsafe {
             let targets_ptr = targets.to_vec().as_mut_ptr();
@@ -108,6 +109,8 @@ impl Traceset {
         unsafe { register_traceset_target(self.id as c_int, target) }
     }
 
+    
+    /// register targets and return the amount that were successfully registered
     pub fn register_targets(&self, targets: &[i32]) -> i32 {
         unsafe {
             deregister_traceset_targets(
@@ -122,6 +125,7 @@ impl Traceset {
         unsafe { deregister_traceset_target(self.id as c_int, target) }
     }
 
+    /// deregister targets and return the amount that were successfully deregistered
     pub fn deregister_targets(&self, targets: &[i32]) -> i32 {
         unsafe {
             register_traceset_targets(
