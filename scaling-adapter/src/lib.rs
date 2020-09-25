@@ -100,7 +100,6 @@ impl MetricsHistory {
         let mut index = self.next_index - 1;
         let mut result = Vec::with_capacity(counter);
         while counter > 0 {
-            println!("{}", index);
             result.push(self.buffer.get(index).unwrap());
             counter -= 1;
             index = if index == 0 {
@@ -150,13 +149,26 @@ impl ScalingAdapter {
     }
 
     pub fn get_scaling_advice(&self) -> i32 {
-        0
+        let now = SystemTime::now();
+        let elapsed = now
+            .duration_since(self.latest_snapshot_time)
+            .map(|duration| duration.as_millis())
+            .unwrap_or(0);
+        if elapsed >= self.parameters.check_interval_ms as u128 {
+            unimplemented!();
+        } else {
+            0
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{IntervalMetrics, MetricsHistory};
+    use super::*;
+    use std::{
+        path::PathBuf,
+        process::{Command, Stdio},
+    };
 
     fn construct_dummy_history_big() -> MetricsHistory {
         let mut result = MetricsHistory::new();
@@ -171,6 +183,21 @@ mod tests {
         result
     }
 
+    fn has_tracesets() -> bool {
+        let mut script_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        script_path.push("../kernel_has_tracesets.sh");
+        let process = match Command::new(script_path).stdout(Stdio::piped()).spawn() {
+            Ok(process) => process,
+            Err(err) => panic!("could not run kernel patch detection script: {}", err),
+        };
+        let output = match process.wait_with_output() {
+            Ok(output) => output,
+            Err(why) => panic!("couldn't read script stdout: {}", why),
+        };
+        let output = String::from_utf8(output.stdout).expect("valid utf8");
+        output.starts_with("yes")
+    }
+
     #[test]
     fn metrics_history() {
         let history = construct_dummy_history_big();
@@ -179,5 +206,22 @@ mod tests {
             assert_eq!(metrics.current_nr_targets, latest);
             latest -= 1;
         }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn create_empty_adapter() {
+        assert!(has_tracesets());
+        let params = ScalingParameters {
+            check_interval_ms: 1000,
+            syscall_nrs: vec![1, 2],
+            calc_interval_metrics: |data| IntervalMetrics {
+                scale_metric: 0.0,
+                idle_metric: 0.0,
+                current_nr_targets: 0,
+            },
+        };
+        let adapter = ScalingAdapter::new(params);
+        assert!(adapter.is_ok())
     }
 }
