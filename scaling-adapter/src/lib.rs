@@ -68,7 +68,7 @@ struct MetricsHistory {
     capacity: usize,
     buffer: Vec<IntervalMetrics>,
     // index of latest metricpoint
-    latest_index: usize,
+    next_index: usize,
 }
 
 impl MetricsHistory {
@@ -77,7 +77,7 @@ impl MetricsHistory {
         MetricsHistory {
             capacity,
             buffer: Vec::with_capacity(capacity),
-            latest_index: 0,
+            next_index: 0,
         }
     }
 
@@ -85,19 +85,29 @@ impl MetricsHistory {
     /// add a new interval metric to the history
     /// if buffer is full, the oldest entry is removed
     pub fn add(&mut self, datapoint: IntervalMetrics) {
-        let next_index = (self.latest_index + 1) % self.capacity;
-        std::mem::replace(&mut self.buffer[next_index], datapoint);
+        if self.next_index >= self.buffer.len() {
+            self.buffer.push(datapoint);
+        } else {
+            std::mem::replace(&mut self.buffer[self.next_index], datapoint);
+        }
+        self.next_index = (self.next_index + 1) % self.capacity;
     }
 
     /// return the last interval metric datapoints, from newest to oldest
     pub fn last(&self) -> Vec<&IntervalMetrics> {
         let mut counter = self.buffer.len();
-        let mut index = self.latest_index;
+        // if next_index is 0, counter will be 0 -> index's garbage value does not matter
+        let mut index = self.next_index - 1;
         let mut result = Vec::with_capacity(counter);
         while counter > 0 {
+            println!("{}", index);
             result.push(self.buffer.get(index).unwrap());
             counter -= 1;
-            index = ((index as i32 - 1) % self.capacity as i32) as usize;
+            index = if index == 0 {
+                self.capacity - 1
+            } else {
+                index - 1
+            };
         }
         result
     }
@@ -146,8 +156,28 @@ impl ScalingAdapter {
 
 #[cfg(test)]
 mod tests {
+    use crate::{IntervalMetrics, MetricsHistory};
+
+    fn construct_dummy_history_big() -> MetricsHistory {
+        let mut result = MetricsHistory::new();
+        for i in 1..25 {
+            let dummy = IntervalMetrics {
+                scale_metric: i as f64,
+                idle_metric: i as f64,
+                current_nr_targets: i,
+            };
+            result.add(dummy);
+        }
+        result
+    }
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn metrics_history() {
+        let history = construct_dummy_history_big();
+        let mut latest = 24;
+        for metrics in history.last() {
+            assert_eq!(metrics.current_nr_targets, latest);
+            latest -= 1;
+        }
     }
 }
