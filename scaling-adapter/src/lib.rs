@@ -1,16 +1,21 @@
 #![allow(dead_code)]
-use std::{collections::HashMap, time::SystemTime};
+use std::time::SystemTime;
 
 use errors::AdapterError;
 use tracesets::{SyscallData, Traceset, TracesetSnapshot};
 
 mod errors;
 
-struct IntervalData {
-    read_bytes: u64,
-    write_bytes: u64,
-    syscalls_data: HashMap<i32, SyscallData>,
+pub struct IntervalData {
+    pub read_bytes: u64,
+    pub write_bytes: u64,
+    // same order as syscall_nr vec passed in ScalingParameters
+    pub syscalls_data: Vec<SyscallData>,
 }
+
+// as IntervalData is read-only this should be safe
+unsafe impl std::marker::Send for IntervalData {}
+unsafe impl std::marker::Sync for IntervalData {}
 
 impl IntervalData {
     pub fn new(
@@ -22,7 +27,7 @@ impl IntervalData {
         if targets_match {
             let read_bytes = snapshot_later.read_bytes - snapshot_earlier.read_bytes;
             let write_bytes = snapshot_later.write_bytes - snapshot_earlier.write_bytes;
-            let mut syscalls_data = HashMap::new();
+            let mut syscalls_data = Vec::new();
             for syscall in snapshot_earlier.syscalls_data.keys() {
                 let earlier_data = snapshot_earlier.syscalls_data.get(syscall).unwrap();
                 let later_data = snapshot_later.syscalls_data.get(syscall).unwrap();
@@ -32,7 +37,7 @@ impl IntervalData {
                     count: count_diff,
                     total_time: time_diff,
                 };
-                syscalls_data.insert(*syscall, syscall_data_diff);
+                syscalls_data.push(syscall_data_diff);
             }
             Some(IntervalData {
                 read_bytes,
@@ -58,10 +63,10 @@ impl IntervalData {
     }
 }
 
-struct IntervalMetrics {
-    scale_metric: f64,
-    idle_metric: f64,
-    current_nr_targets: u32,
+pub struct IntervalMetrics {
+    pub scale_metric: f64,
+    pub idle_metric: f64,
+    pub current_nr_targets: u32,
 }
 
 struct MetricsHistory {
@@ -112,13 +117,15 @@ impl MetricsHistory {
     }
 }
 
-struct ScalingParameters {
-    check_interval_ms: u64,
-    syscall_nrs: Vec<i32>,
-    calc_interval_metrics: fn(&IntervalData) -> IntervalMetrics,
+pub struct ScalingParameters {
+    pub check_interval_ms: u64,
+    pub syscall_nrs: Vec<i32>,
+    // calc_interval_metrics: fn(&IntervalData) -> IntervalMetrics,
+    // allow closures, but restrict to thread-safe (implement Send, Sync)
+    pub calc_interval_metrics: Box<dyn Fn(&IntervalData) -> IntervalMetrics + Send + Sync>,
 }
 
-struct ScalingAdapter {
+pub struct ScalingAdapter {
     parameters: ScalingParameters,
     traceset: Traceset,
     metrics_history: MetricsHistory,
@@ -215,11 +222,11 @@ mod tests {
         let params = ScalingParameters {
             check_interval_ms: 1000,
             syscall_nrs: vec![1, 2],
-            calc_interval_metrics: |data| IntervalMetrics {
+            calc_interval_metrics: Box::new(|_data| IntervalMetrics {
                 scale_metric: 0.0,
                 idle_metric: 0.0,
                 current_nr_targets: 0,
-            },
+            }),
         };
         let adapter = ScalingAdapter::new(params);
         assert!(adapter.is_ok())

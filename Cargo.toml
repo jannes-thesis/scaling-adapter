@@ -1,2 +1,2 @@
 [workspace]
-members = ["tracesets-sys", "tracesets", "scaling-adapter"]
+members = ["tracesets-sys", "tracesets", "scaling-adapter", "scaling-adapter-clib"]

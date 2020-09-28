@@ -7,8 +7,13 @@ use tracesets_sys::{
     register_traceset_targets, traceset,
 };
 
+// as Traceset is read-only this should be safe
+unsafe impl std::marker::Send for Traceset {}
+unsafe impl std::marker::Sync for Traceset {}
+
 pub struct Traceset {
-    _traceset: *mut traceset,
+    // _traceset: *mut traceset,
+    _traceset: *const traceset,
     pub id: i32,
     pub targets: Vec<i32>,
     pub syscalls: Vec<i32>,
@@ -109,7 +114,6 @@ impl Traceset {
         unsafe { register_traceset_target(self.id as c_int, target) }
     }
 
-    
     /// register targets and return the amount that were successfully registered
     pub fn register_targets(&self, targets: &[i32]) -> i32 {
         unsafe {
