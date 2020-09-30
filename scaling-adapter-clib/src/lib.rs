@@ -2,21 +2,29 @@ use std::{ptr, sync::RwLock};
 
 use lazy_static::lazy_static;
 use scaling_adapter::{IntervalData, IntervalMetrics, ScalingAdapter, ScalingParameters};
-use tracesets::SyscallData;
+use scaling_adapter::tracesets::SyscallData;
 
+type CalcMetricsFunFFI = unsafe extern "C" fn(&IntervalDataFFI) -> IntervalMetricsFFI;
+
+// save adapter and the external C function for metrics calculation as globals
+// these will be set when creating a scaling adapter -> maximum one adapter can be created
 lazy_static! {
     static ref ADAPTER: RwLock<Option<ScalingAdapter>> = RwLock::new(None);
-    static ref CALC_F: RwLock<Option<CalcMetricsFunFFI>> = RwLock::new(None);
+    // seems needed, wasn't able to constrain the passed C function to a static lifetime
+    static ref CALC_METRICS_FFI: RwLock<Option<CalcMetricsFunFFI>> = RwLock::new(None);
 }
 
 #[repr(C)]
 pub struct IntervalDataFFI {
-    read_bytes: u64,
-    write_bytes: u64,
-    syscalls_data: *const SyscallData,
+    pub read_bytes: u64,
+    pub write_bytes: u64,
+    pub syscalls_data: *const SyscallData,
 }
 
 impl IntervalDataFFI {
+    // create FFI version of IntervalData
+    // the pointer to the SyscallData is used in the calculation function
+    // when the original IntervalData reference is still valid
     pub fn new(data: &IntervalData) -> Self {
         IntervalDataFFI {
             read_bytes: data.read_bytes,
@@ -33,15 +41,6 @@ pub struct IntervalMetricsFFI {
     current_nr_targets: u32,
 }
 
-#[repr(C)]
-pub struct ScalingParametersFFI {
-    check_interval_ms: u64,
-    syscall_nrs: Vec<i32>,
-    calc_interval_metrics: fn(&IntervalDataFFI) -> IntervalMetricsFFI,
-}
-
-type CalcMetricsFunFFI = unsafe extern "C" fn(&IntervalDataFFI) -> IntervalMetricsFFI;
-
 #[no_mangle]
 pub extern "C" fn new_adapter(
     check_interval_ms: u64,
@@ -50,8 +49,8 @@ pub extern "C" fn new_adapter(
     calc_interval_metrics: CalcMetricsFunFFI,
 ) -> bool {
     let mut adapter_global = ADAPTER.write().unwrap();
-    let mut calc_f_global = CALC_F.write().unwrap();
-    *calc_f_global = Some(calc_interval_metrics);
+    let mut calc_metrics_ffi_global = CALC_METRICS_FFI.write().unwrap();
+    *calc_metrics_ffi_global = Some(calc_interval_metrics);
 
     // create new vector from the passed C array of syscall numbers
     let syscalls_vec: Vec<i32> = unsafe {
@@ -64,7 +63,7 @@ pub extern "C" fn new_adapter(
     // convert C function pointer to correct Rust closure
     let calc_f = Box::new(|interval_data: &IntervalData| -> IntervalMetrics {
         let converted = IntervalDataFFI::new(interval_data);
-        let metrics_ffi = unsafe { CALC_F.read().unwrap().unwrap()(&converted) };
+        let metrics_ffi = unsafe { CALC_METRICS_FFI.read().unwrap().unwrap()(&converted) };
         IntervalMetrics {
             scale_metric: metrics_ffi.scale_metric,
             idle_metric: metrics_ffi.idle_metric,

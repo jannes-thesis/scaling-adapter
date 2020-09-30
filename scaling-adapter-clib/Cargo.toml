@@ -13,9 +13,11 @@ crate-type = ["staticlib"]
 panic = 'abort'
 
 [dependencies]
-scaling-adapter = { path = "../scaling-adapter" }
-tracesets = { path = "../tracesets" }
 lazy_static = "1.4.0"
+
+[dependencies.scaling-adapter]
+path = "../scaling-adapter"
+features = ["c_repr"]
 
 [build-dependencies]
 cbindgen = "0.14.6"

@@ -376,7 +376,6 @@ dependencies = [
  "cbindgen",
  "lazy_static",
  "scaling-adapter",
- "tracesets",
 ]
 
 [[package]]

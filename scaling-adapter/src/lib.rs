@@ -2,6 +2,9 @@
 use std::time::SystemTime;
 
 use errors::AdapterError;
+// need to make import public for it to be visible in dependant library/exe
+// https://stackoverflow.com/questions/62933825/why-we-need-to-specify-all-dependenciesincluding-transitives-in-rust
+pub use tracesets;
 use tracesets::{SyscallData, Traceset, TracesetSnapshot};
 
 mod errors;
