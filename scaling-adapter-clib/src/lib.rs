@@ -119,10 +119,7 @@ pub extern "C" fn close_adapter() {
 mod tests {
     use super::*;
     use serial_test::serial;
-    use std::{
-        process::{Child, Command},
-        thread, time,
-    };
+    use std::{process::{Child, Command, Stdio}, thread, time};
 
     unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalMetricsFFI {
         IntervalMetricsFFI {
@@ -145,11 +142,30 @@ mod tests {
     }
 
     fn spawn_sleeper() -> Child {
-        Command::new("python")
+        Command::new("bash")
             .arg("-c")
-            .arg("\"while true; do echo hi; sleep 2; done\"")
+            .arg("while true; do sleep 1; done")
             .spawn()
-            .expect("sleeper bash script to execute successfully")
+            .expect("bash command to exist")
+    }
+
+    fn calc_new_interval_metrics() -> IntervalMetrics {
+        let mut adapter_global = ADAPTER.write().unwrap();
+        assert!((*adapter_global).is_some());
+        let adapter = adapter_global.as_mut().unwrap();
+        // 1. update amount of targets, sleep long enough for one call to nanosleep, 2. update to get valid interval data
+        adapter.update();
+        thread::sleep(time::Duration::from_millis(2500));
+        adapter.update();
+        *(adapter.get_latest_metrics()
+            .expect("latest metric to exist because between last two updates the amount of targets did not change"))
+    }
+
+    #[test]
+    fn test_sleeper() {
+        let mut sleeper = spawn_sleeper();
+        thread::sleep(time::Duration::from_millis(50));
+        sleeper.kill().expect("no process to kill");
     }
 
     #[test]
@@ -175,8 +191,12 @@ mod tests {
         // add sleeper process to be traced
         let is_added = add_tracee(sleeper_pid as i32);
         assert!(is_added);
-        thread::sleep(time::Duration::from_millis(50));
-
+        // update adapter and get latest metric, verify scale_metric equals nanosleep syscall count (should be 1)
+        let lastest_metric = calc_new_interval_metrics();
+        println!("latest metric: {:?}", &lastest_metric);
+        assert!(lastest_metric.scale_metric > 0.9);
+        assert!(lastest_metric.scale_metric < 1.1);
+        // remove traceee
         let is_removed = remove_tracee(sleeper_pid as i32);
         assert!(is_removed);
         close_adapter();

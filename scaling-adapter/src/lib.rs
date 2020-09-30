@@ -66,6 +66,7 @@ impl IntervalData {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct IntervalMetrics {
     pub scale_metric: f64,
     pub idle_metric: f64,
@@ -156,6 +157,31 @@ impl ScalingAdapter {
 
     pub fn remove_tracee(&self, tracee_pid: i32) -> bool {
         self.traceset.deregister_target(tracee_pid)
+    }
+
+    /// take new snapshot and take difference with previous snapshot
+    /// if interval is valid (amount of targets matches)
+    ///      update history and return true
+    /// else
+    ///      return false
+    pub fn update(&mut self) -> bool {
+        let snapshot = self.traceset.get_snapshot();
+        let snapshot_time = SystemTime::now();
+        let interval_data = IntervalData::new(&self.latest_snapshot, &snapshot);
+        match interval_data {
+            Some(data) => {
+                self.latest_snapshot = snapshot;
+                self.latest_snapshot_time = snapshot_time;
+                let metrics = (self.parameters.calc_interval_metrics)(&data);
+                self.metrics_history.add(metrics);
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn get_latest_metrics(&self) -> Option<&IntervalMetrics> {
+        self.metrics_history.last().get(0).copied()
     }
 
     pub fn get_scaling_advice(&self) -> i32 {
