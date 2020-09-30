@@ -34,6 +34,9 @@ impl Drop for Traceset {
     }
 }
 
+// not using #[cfg_attr(feature = "c_repr", repr(C))]
+// because then cbindgen will generate empty type for SyscallData
+
 #[cfg(feature="c_repr")]
 #[repr(C)]
 pub struct SyscallData {
