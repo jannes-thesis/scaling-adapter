@@ -1,8 +1,8 @@
 use std::{ptr, sync::RwLock};
 
 use lazy_static::lazy_static;
-use scaling_adapter::{IntervalData, IntervalMetrics, ScalingAdapter, ScalingParameters};
 use scaling_adapter::tracesets::SyscallData;
+use scaling_adapter::{IntervalData, IntervalMetrics, ScalingAdapter, ScalingParameters};
 
 type CalcMetricsFunFFI = unsafe extern "C" fn(&IntervalDataFFI) -> IntervalMetricsFFI;
 
@@ -78,4 +78,110 @@ pub extern "C" fn new_adapter(
     };
     *adapter_global = ScalingAdapter::new(params).ok();
     (*adapter_global).is_some()
+}
+
+#[no_mangle]
+pub extern "C" fn add_tracee(tracee_pid: i32) -> bool {
+    let adapter_global = ADAPTER.write().unwrap();
+    assert!((*adapter_global).is_some());
+    let adapter = adapter_global.as_ref().unwrap();
+    adapter.add_tracee(tracee_pid)
+}
+
+#[no_mangle]
+pub extern "C" fn remove_tracee(tracee_pid: i32) -> bool {
+    let adapter_global = ADAPTER.write().unwrap();
+    assert!((*adapter_global).is_some());
+    let adapter = adapter_global.as_ref().unwrap();
+    adapter.remove_tracee(tracee_pid)
+}
+
+#[no_mangle]
+pub extern "C" fn get_scaling_advice() -> i32 {
+    let adapter_global = match ADAPTER.try_write() {
+        Ok(option) => option,
+        Err(_) => return 0,
+    };
+    assert!((*adapter_global).is_some());
+    let adapter = adapter_global.as_ref().unwrap();
+    adapter.get_scaling_advice()
+}
+
+#[no_mangle]
+pub extern "C" fn close_adapter() {
+    let mut adapter_global = ADAPTER.write().unwrap();
+    assert!((*adapter_global).is_some());
+    // this should automatically drop the adapter and thereby free the kernel space resources
+    *adapter_global = None;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use std::{
+        process::{Child, Command},
+        thread, time,
+    };
+
+    unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalMetricsFFI {
+        IntervalMetricsFFI {
+            scale_metric: 0.0,
+            idle_metric: 0.0,
+            current_nr_targets: 2,
+        }
+    }
+
+    unsafe extern "C" fn constant_calc_fn(data: &IntervalDataFFI) -> IntervalMetricsFFI {
+        let mut syscalls_data_vec = Vec::with_capacity(1);
+        syscalls_data_vec.set_len(1);
+        ptr::copy(data.syscalls_data, syscalls_data_vec.as_mut_ptr(), 1);
+        let nanosleep_call_count = syscalls_data_vec.get_unchecked(0).count;
+        IntervalMetricsFFI {
+            scale_metric: nanosleep_call_count as f64,
+            idle_metric: 0.0,
+            current_nr_targets: 2,
+        }
+    }
+
+    fn spawn_sleeper() -> Child {
+        Command::new("python")
+            .arg("-c")
+            .arg("\"while true; do echo hi; sleep 2; done\"")
+            .spawn()
+            .expect("sleeper bash script to execute successfully")
+    }
+
+    #[test]
+    #[serial]
+    fn create_close() {
+        let syscalls = vec![0, 1, 2];
+        let is_created = new_adapter(1000, syscalls.as_ptr(), syscalls.len(), dummy_calc_fn);
+        assert!(is_created);
+        close_adapter();
+    }
+
+    #[test]
+    #[serial]
+    fn with_target() {
+        // create child process that just sleeps in a loop
+        let mut sleeper_process = spawn_sleeper();
+        let sleeper_pid = sleeper_process.id();
+        let nanosleep_syscall_nr = 35;
+        let syscalls = vec![nanosleep_syscall_nr];
+        // trace the nanosleep system call and set the scale_metric to the nanosleep call count
+        let is_created = new_adapter(1000, syscalls.as_ptr(), syscalls.len(), constant_calc_fn);
+        assert!(is_created);
+        // add sleeper process to be traced
+        let is_added = add_tracee(sleeper_pid as i32);
+        assert!(is_added);
+        thread::sleep(time::Duration::from_millis(50));
+
+        let is_removed = remove_tracee(sleeper_pid as i32);
+        assert!(is_removed);
+        close_adapter();
+        sleeper_process
+            .kill()
+            .expect("sleeper process to be killed gracefully");
+    }
 }

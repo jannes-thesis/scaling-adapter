@@ -21,3 +21,6 @@ features = ["c_repr"]
 
 [build-dependencies]
 cbindgen = "0.14.6"
+
+[dev-dependencies]
+serial_test = "0.5.0"

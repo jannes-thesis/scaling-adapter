@@ -25,9 +25,17 @@ typedef struct {
 
 typedef IntervalMetricsFFI (*CalcMetricsFunFFI)(const IntervalDataFFI*);
 
+bool add_tracee(int32_t tracee_pid);
+
+void close_adapter(void);
+
+int32_t get_scaling_advice(void);
+
 bool new_adapter(uint64_t check_interval_ms,
                  const int32_t *syscall_nrs,
                  uintptr_t amount_syscalls,
                  CalcMetricsFunFFI calc_interval_metrics);
+
+bool remove_tracee(int32_t tracee_pid);
 
 #endif /* scaling_adapter_h */
