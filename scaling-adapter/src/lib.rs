@@ -227,8 +227,30 @@ mod tests {
     use super::*;
     use std::{
         path::PathBuf,
-        process::{Command, Stdio},
+        process::{Child, Command, Stdio},
+        thread, time,
     };
+
+    // need to wrap child process so we can auto cleanup when tests panic
+    struct ProcessWrapper {
+        pub process: Child,
+    }
+
+    impl Drop for ProcessWrapper {
+        fn drop(&mut self) {
+            let _ = self.process.kill();
+        }
+    }
+
+    fn spawn_echoer() -> ProcessWrapper {
+        ProcessWrapper {
+            process: Command::new("bash")
+            .arg("-c")
+            .arg("while true; do echo hi; sleep 1; done")
+            .spawn()
+            .expect("bash command to exist"),
+        }
+    }
 
     fn construct_dummy_history_big() -> MetricsHistory {
         let mut result = MetricsHistory::new();
@@ -241,7 +263,6 @@ mod tests {
                 amount_targets: i,
                 interval_start: SystemTime::now(),
                 interval_end: SystemTime::now(),
-
             };
             result.add(dummy);
         }
@@ -287,5 +308,46 @@ mod tests {
         };
         let adapter = ScalingAdapter::new(params);
         assert!(adapter.is_ok())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn adapter_with_target() {
+        assert!(has_tracesets());
+        // create child process that just echos "hi" in a loop
+        let echoer = spawn_echoer();
+        let echoer_pid = echoer.process.id();
+        println!("pid of echoer: {}", echoer_pid);
+        let write_syscall_nr = 61;
+        let syscalls = vec![write_syscall_nr];
+        // trace the write system call (should be called for every echo)
+        // and set the scale_metric to the close call count
+        let params = ScalingParameters {
+            check_interval_ms: 1000,
+            syscall_nrs: syscalls,
+            calc_interval_metrics: Box::new(|data| IntervalDerivedData {
+                scale_metric: data.syscalls_data.get(0).unwrap().count as f64,
+                idle_metric: 0.0,
+            }),
+        };
+        let mut adapter = match ScalingAdapter::new(params) {
+            Ok(a) => a,
+            _ => panic!("adapter creation failed"),
+        };
+        // add sleeper process to be traced
+        let is_added = adapter.add_tracee(echoer_pid as i32);
+        assert!(is_added);
+        // update adapter and get latest metric, verify scale_metric is > 0
+        adapter.update();
+        thread::sleep(time::Duration::from_millis(20000));
+        adapter.update();
+        let latest_metrics = adapter
+            .get_latest_metrics()
+            .expect("adapter should have at least one datapoint in metrics history");
+        println!("latest metric: {:?}", latest_metrics.derived_data);
+        assert!(latest_metrics.derived_data.scale_metric > 0.9);
+        // remove traceee
+        let is_removed = adapter.remove_tracee(echoer_pid as i32);
+        assert!(is_removed);
     }
 }

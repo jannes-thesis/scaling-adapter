@@ -72,8 +72,9 @@ bool register_traceset_target(int traceset_id, pid_t target_pid) {
         return false;
 }
 
+// returns true if no error occurred (then all targets are guaranteed not to be traced)
 bool deregister_traceset_target(int traceset_id, pid_t target_pid) {
-    if (deregister_traceset_targets(traceset_id, &target_pid, 1) == 1)
+    if (deregister_traceset_targets(traceset_id, &target_pid, 1) <= 1)
         return true;
     else
         return false;

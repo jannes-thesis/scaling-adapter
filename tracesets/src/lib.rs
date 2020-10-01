@@ -1,8 +1,9 @@
 extern crate tracesets_sys;
-use std::{collections::HashMap, os::raw::c_int, slice};
+use std::{collections::HashMap, collections::HashSet, os::raw::c_int, slice};
+use std::iter::FromIterator;
 
 use tracesets_sys::{
-    __traceset_syscall_data, deregister_traceset, deregister_traceset_target,
+    __traceset_data, __traceset_syscall_data, deregister_traceset, deregister_traceset_target,
     deregister_traceset_targets, register_traceset, register_traceset_target,
     register_traceset_targets, traceset,
 };
@@ -15,7 +16,7 @@ pub struct Traceset {
     // _traceset: *mut traceset,
     _traceset: *const traceset,
     pub id: i32,
-    pub targets: Vec<i32>,
+    pub targets: HashSet<i32>,
     pub syscalls: Vec<i32>,
 }
 
@@ -23,7 +24,7 @@ pub struct TracesetSnapshot {
     pub read_bytes: u64,
     pub write_bytes: u64,
     pub syscalls_data: HashMap<i32, SyscallData>,
-    pub targets: Vec<i32>,
+    pub targets: HashSet<i32>,
 }
 
 impl Drop for Traceset {
@@ -66,7 +67,7 @@ impl Traceset {
                 Some(Traceset {
                     _traceset: traceset,
                     id: (*(*traceset).data).traceset_id,
-                    targets: targets.to_vec(),
+                    targets: HashSet::from_iter(targets.iter().copied()),
                     syscalls: syscalls.to_vec(),
                 })
             }
@@ -121,27 +122,24 @@ impl Traceset {
         result
     }
 
-    pub fn register_target(&self, target: i32) -> bool {
+    pub fn get_amount_targets(&self) -> usize {
+        let traceset_data: &__traceset_data =
+            unsafe { self._traceset.as_ref().unwrap().data.as_ref().unwrap() };
+        traceset_data.amount_targets as usize
+    }
+
+    pub fn register_target(&mut self, target: i32) -> bool {
+        // problematic, as adding target may fail in kernel (but does not return err)
+        self.targets.insert(target);
         unsafe { register_traceset_target(self.id as c_int, target) }
     }
 
     /// register targets and return the amount that were successfully registered
-    pub fn register_targets(&self, targets: &[i32]) -> i32 {
-        unsafe {
-            deregister_traceset_targets(
-                self.id as c_int,
-                targets.to_vec().as_mut_ptr(),
-                targets.len() as i32,
-            )
+    pub fn register_targets(&mut self, targets: &[i32]) -> i32 {
+        // problematic, as adding target may fail in kernel (but does not return err)
+        for target in targets {
+            self.targets.insert(*target);
         }
-    }
-
-    pub fn deregister_target(&self, target: i32) -> bool {
-        unsafe { deregister_traceset_target(self.id as c_int, target) }
-    }
-
-    /// deregister targets and return the amount that were successfully deregistered
-    pub fn deregister_targets(&self, targets: &[i32]) -> i32 {
         unsafe {
             register_traceset_targets(
                 self.id as c_int,
@@ -150,12 +148,95 @@ impl Traceset {
             )
         }
     }
+
+    /// true: no kernel error occurred, target is guaranteed not to be traced 
+    ///       (but may have not been a target before)
+    /// false: kernel error
+    pub fn deregister_target(&mut self, target: i32) -> bool {
+        let is_success = unsafe { deregister_traceset_target(self.id as c_int, target) };
+        if is_success {
+            self.targets.remove(&target);
+        }
+        is_success
+    }
+
+    /// deregister targets and return the amount that were successfully deregistered
+    /// if return value is >= 0, all passed targets are guaranteed not to be traced
+    pub fn deregister_targets(&mut self, targets: &[i32]) -> i32 {
+        let amount_removed = unsafe {
+            deregister_traceset_targets(
+                self.id as c_int,
+                targets.to_vec().as_mut_ptr(),
+                targets.len() as i32,
+            )
+        };
+        if amount_removed >= 0 {
+            for target in targets {
+                self.targets.remove(target);
+            }
+            amount_removed
+        } else {
+            0
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use std::{
+        process::{Child, Command},
+        thread,
+        time::Duration,
+    };
+
+    // need to wrap child process so we can auto cleanup when tests panic
+    struct ProcessWrapper {
+        pub process: Child,
+    }
+
+    impl Drop for ProcessWrapper {
+        fn drop(&mut self) {
+            let _ = self.process.kill();
+        }
+    }
+
+    fn spawn_echoer() -> ProcessWrapper {
+        ProcessWrapper {
+            process: Command::new("bash")
+                .arg("-c")
+                .arg("while true; do echo hi; sleep 1; done")
+                .spawn()
+                .expect("bash command to exist"),
+        }
+    }
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn single_target_added() {
+        // create child process that just echos "hi" in a loop
+        let echoer = spawn_echoer();
+        let echoer_pid = echoer.process.id();
+        println!("pid of echoer: {}", echoer_pid);
+        let write_syscall_nr = 61;
+        let syscalls = vec![write_syscall_nr];
+        let no_targets: Vec<i32> = vec![];
+        // trace the write system call (should be called for every echo)
+        let mut traceset = match Traceset::new(&no_targets, &syscalls) {
+            Some(traceset) => traceset,
+            None => panic!("traceset creation failed"),
+        };
+        // add echoer process to be traced
+        let is_added = traceset.register_target(echoer_pid as i32);
+        assert!(is_added);
+        thread::sleep(Duration::from_millis(1000));
+        println!("read bytes: {}", traceset.get_read_bytes());
+        println!("write bytes: {}", traceset.get_write_bytes());
+        println!("traceset id: {}", traceset.id);
+        println!("traceset targets: {:?}", &traceset.targets);
+        println!("amount targets: {:?}", traceset.get_amount_targets());
+        assert!(traceset.targets.len() == 1);
+        // remove echoer process to be traced
+        let is_removed = traceset.deregister_target(echoer_pid as i32);
+        assert!(is_removed);
     }
 }

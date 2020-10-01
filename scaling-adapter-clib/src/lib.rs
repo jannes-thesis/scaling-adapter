@@ -115,19 +115,19 @@ mod tests {
         thread, time,
     };
 
-    unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalDerivedData{
-        IntervalDerivedData{
+    unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalDerivedData {
+        IntervalDerivedData {
             scale_metric: 0.0,
             idle_metric: 0.0,
         }
     }
 
-    unsafe extern "C" fn constant_calc_fn(data: &IntervalDataFFI) -> IntervalDerivedData{
+    unsafe extern "C" fn constant_calc_fn(data: &IntervalDataFFI) -> IntervalDerivedData {
         let mut syscalls_data_vec = Vec::with_capacity(1);
         syscalls_data_vec.set_len(1);
         ptr::copy(data.syscalls_data, syscalls_data_vec.as_mut_ptr(), 1);
         let nanosleep_call_count = syscalls_data_vec.get_unchecked(0).count;
-        IntervalDerivedData{
+        IntervalDerivedData {
             scale_metric: nanosleep_call_count as f64,
             idle_metric: 0.0,
         }
