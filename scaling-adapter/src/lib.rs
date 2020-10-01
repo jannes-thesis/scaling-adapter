@@ -14,6 +14,7 @@ pub struct IntervalData {
     pub write_bytes: u64,
     // same order as syscall_nr vec passed in ScalingParameters
     pub syscalls_data: Vec<SyscallData>,
+    pub amount_targets: usize,
 }
 
 // as IntervalData is read-only this should be safe
@@ -30,6 +31,7 @@ impl IntervalData {
         if targets_match {
             let read_bytes = snapshot_later.read_bytes - snapshot_earlier.read_bytes;
             let write_bytes = snapshot_later.write_bytes - snapshot_earlier.write_bytes;
+            let amount_targets = snapshot_earlier.targets.len();
             let mut syscalls_data = Vec::new();
             for syscall in snapshot_earlier.syscalls_data.keys() {
                 let earlier_data = snapshot_earlier.syscalls_data.get(syscall).unwrap();
@@ -46,6 +48,7 @@ impl IntervalData {
                 read_bytes,
                 write_bytes,
                 syscalls_data,
+                amount_targets,
             })
         } else {
             None
@@ -66,11 +69,26 @@ impl IntervalData {
     }
 }
 
+#[cfg(feature = "c_repr")]
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct IntervalMetrics {
+pub struct IntervalDerivedData {
     pub scale_metric: f64,
     pub idle_metric: f64,
-    pub current_nr_targets: u32,
+}
+
+#[cfg(not(feature = "c_repr"))]
+#[derive(Clone, Copy, Debug)]
+pub struct IntervalDerivedData {
+    pub scale_metric: f64,
+    pub idle_metric: f64,
+}
+
+pub struct IntervalMetrics {
+    pub derived_data: IntervalDerivedData,
+    pub amount_targets: usize,
+    pub interval_start: SystemTime,
+    pub interval_end: SystemTime,
 }
 
 struct MetricsHistory {
@@ -126,7 +144,7 @@ pub struct ScalingParameters {
     pub syscall_nrs: Vec<i32>,
     // calc_interval_metrics: fn(&IntervalData) -> IntervalMetrics,
     // allow closures, but restrict to thread-safe (implement Send, Sync)
-    pub calc_interval_metrics: Box<dyn Fn(&IntervalData) -> IntervalMetrics + Send + Sync>,
+    pub calc_interval_metrics: Box<dyn Fn(&IntervalData) -> IntervalDerivedData + Send + Sync>,
 }
 
 pub struct ScalingAdapter {
@@ -170,10 +188,16 @@ impl ScalingAdapter {
         let interval_data = IntervalData::new(&self.latest_snapshot, &snapshot);
         match interval_data {
             Some(data) => {
+                let metrics = (self.parameters.calc_interval_metrics)(&data);
+                let history_point = IntervalMetrics {
+                    derived_data: metrics,
+                    amount_targets: self.latest_snapshot.targets.len(),
+                    interval_start: self.latest_snapshot_time,
+                    interval_end: snapshot_time,
+                };
+                self.metrics_history.add(history_point);
                 self.latest_snapshot = snapshot;
                 self.latest_snapshot_time = snapshot_time;
-                let metrics = (self.parameters.calc_interval_metrics)(&data);
-                self.metrics_history.add(metrics);
                 true
             }
             None => false,
@@ -210,9 +234,14 @@ mod tests {
         let mut result = MetricsHistory::new();
         for i in 1..25 {
             let dummy = IntervalMetrics {
-                scale_metric: i as f64,
-                idle_metric: i as f64,
-                current_nr_targets: i,
+                derived_data: IntervalDerivedData {
+                    scale_metric: i as f64,
+                    idle_metric: i as f64,
+                },
+                amount_targets: i,
+                interval_start: SystemTime::now(),
+                interval_end: SystemTime::now(),
+
             };
             result.add(dummy);
         }
@@ -239,7 +268,7 @@ mod tests {
         let history = construct_dummy_history_big();
         let mut latest = 24;
         for metrics in history.last() {
-            assert_eq!(metrics.current_nr_targets, latest);
+            assert_eq!(metrics.amount_targets, latest);
             latest -= 1;
         }
     }
@@ -251,10 +280,9 @@ mod tests {
         let params = ScalingParameters {
             check_interval_ms: 1000,
             syscall_nrs: vec![1, 2],
-            calc_interval_metrics: Box::new(|_data| IntervalMetrics {
+            calc_interval_metrics: Box::new(|_data| IntervalDerivedData {
                 scale_metric: 0.0,
                 idle_metric: 0.0,
-                current_nr_targets: 0,
             }),
         };
         let adapter = ScalingAdapter::new(params);

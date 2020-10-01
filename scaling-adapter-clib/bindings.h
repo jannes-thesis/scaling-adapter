@@ -9,8 +9,7 @@
 typedef struct {
   double scale_metric;
   double idle_metric;
-  uint32_t current_nr_targets;
-} IntervalMetricsFFI;
+} IntervalDerivedData;
 
 typedef struct {
   uint32_t count;
@@ -21,9 +20,10 @@ typedef struct {
   uint64_t read_bytes;
   uint64_t write_bytes;
   const SyscallData *syscalls_data;
+  uintptr_t amount_targets;
 } IntervalDataFFI;
 
-typedef IntervalMetricsFFI (*CalcMetricsFunFFI)(const IntervalDataFFI*);
+typedef IntervalDerivedData (*CalcMetricsFunFFI)(const IntervalDataFFI*);
 
 bool add_tracee(int32_t tracee_pid);
 

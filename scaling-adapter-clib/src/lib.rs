@@ -2,9 +2,9 @@ use std::{ptr, sync::RwLock};
 
 use lazy_static::lazy_static;
 use scaling_adapter::tracesets::SyscallData;
-use scaling_adapter::{IntervalData, IntervalMetrics, ScalingAdapter, ScalingParameters};
+use scaling_adapter::{IntervalData, IntervalDerivedData, ScalingAdapter, ScalingParameters};
 
-type CalcMetricsFunFFI = unsafe extern "C" fn(&IntervalDataFFI) -> IntervalMetricsFFI;
+type CalcMetricsFunFFI = unsafe extern "C" fn(&IntervalDataFFI) -> IntervalDerivedData;
 
 // save adapter and the external C function for metrics calculation as globals
 // these will be set when creating a scaling adapter -> maximum one adapter can be created
@@ -19,6 +19,7 @@ pub struct IntervalDataFFI {
     pub read_bytes: u64,
     pub write_bytes: u64,
     pub syscalls_data: *const SyscallData,
+    pub amount_targets: usize,
 }
 
 impl IntervalDataFFI {
@@ -30,15 +31,9 @@ impl IntervalDataFFI {
             read_bytes: data.read_bytes,
             write_bytes: data.write_bytes,
             syscalls_data: data.syscalls_data.as_ptr(),
+            amount_targets: data.amount_targets,
         }
     }
-}
-
-#[repr(C)]
-pub struct IntervalMetricsFFI {
-    scale_metric: f64,
-    idle_metric: f64,
-    current_nr_targets: u32,
 }
 
 #[no_mangle]
@@ -61,14 +56,10 @@ pub extern "C" fn new_adapter(
     };
 
     // convert C function pointer to correct Rust closure
-    let calc_f = Box::new(|interval_data: &IntervalData| -> IntervalMetrics {
+    let calc_f = Box::new(|interval_data: &IntervalData| -> IntervalDerivedData {
         let converted = IntervalDataFFI::new(interval_data);
-        let metrics_ffi = unsafe { CALC_METRICS_FFI.read().unwrap().unwrap()(&converted) };
-        IntervalMetrics {
-            scale_metric: metrics_ffi.scale_metric,
-            idle_metric: metrics_ffi.idle_metric,
-            current_nr_targets: metrics_ffi.current_nr_targets,
-        }
+        let derived_data = unsafe { CALC_METRICS_FFI.read().unwrap().unwrap()(&converted) };
+        derived_data
     });
 
     let params = ScalingParameters {
@@ -119,25 +110,26 @@ pub extern "C" fn close_adapter() {
 mod tests {
     use super::*;
     use serial_test::serial;
-    use std::{process::{Child, Command, Stdio}, thread, time};
+    use std::{
+        process::{Child, Command},
+        thread, time,
+    };
 
-    unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalMetricsFFI {
-        IntervalMetricsFFI {
+    unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalDerivedData{
+        IntervalDerivedData{
             scale_metric: 0.0,
             idle_metric: 0.0,
-            current_nr_targets: 2,
         }
     }
 
-    unsafe extern "C" fn constant_calc_fn(data: &IntervalDataFFI) -> IntervalMetricsFFI {
+    unsafe extern "C" fn constant_calc_fn(data: &IntervalDataFFI) -> IntervalDerivedData{
         let mut syscalls_data_vec = Vec::with_capacity(1);
         syscalls_data_vec.set_len(1);
         ptr::copy(data.syscalls_data, syscalls_data_vec.as_mut_ptr(), 1);
         let nanosleep_call_count = syscalls_data_vec.get_unchecked(0).count;
-        IntervalMetricsFFI {
+        IntervalDerivedData{
             scale_metric: nanosleep_call_count as f64,
             idle_metric: 0.0,
-            current_nr_targets: 2,
         }
     }
 
@@ -149,7 +141,7 @@ mod tests {
             .expect("bash command to exist")
     }
 
-    fn calc_new_interval_metrics() -> IntervalMetrics {
+    fn calc_new_interval_metrics() -> IntervalDerivedData {
         let mut adapter_global = ADAPTER.write().unwrap();
         assert!((*adapter_global).is_some());
         let adapter = adapter_global.as_mut().unwrap();
@@ -157,8 +149,9 @@ mod tests {
         adapter.update();
         thread::sleep(time::Duration::from_millis(2500));
         adapter.update();
-        *(adapter.get_latest_metrics()
-            .expect("latest metric to exist because between last two updates the amount of targets did not change"))
+        adapter.get_latest_metrics()
+            .expect("latest metric to exist because between last two updates the amount of targets did not change")
+            .derived_data
     }
 
     #[test]
