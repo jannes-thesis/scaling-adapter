@@ -40,12 +40,14 @@ impl Drop for Traceset {
 
 #[cfg(feature = "c_repr")]
 #[repr(C)]
+#[derive(Debug)]
 pub struct SyscallData {
     pub count: u32,
     pub total_time: u64,
 }
 
 #[cfg(not(feature = "c_repr"))]
+#[derive(Debug)]
 pub struct SyscallData {
     pub count: u32,
     pub total_time: u64,
@@ -235,6 +237,9 @@ mod tests {
         println!("traceset targets: {:?}", &traceset.targets);
         println!("amount targets: {:?}", traceset.get_amount_targets());
         assert!(traceset.targets.len() == 1);
+        let write_syscall_data = traceset.get_syscall_data(write_syscall_nr).unwrap();
+        print!("write syscall data: {:?}", write_syscall_data);
+        assert!(write_syscall_data.count > 0);
         // remove echoer process to be traced
         let is_removed = traceset.deregister_target(echoer_pid as i32);
         assert!(is_removed);

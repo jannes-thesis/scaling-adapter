@@ -26,8 +26,7 @@ impl IntervalData {
         snapshot_earlier: &TracesetSnapshot,
         snapshot_later: &TracesetSnapshot,
     ) -> Option<IntervalData> {
-        let targets_match =
-            IntervalData::targets_equal(&snapshot_earlier.targets, &snapshot_earlier.targets);
+        let targets_match = snapshot_earlier.targets.eq(&snapshot_later.targets);
         if targets_match {
             let read_bytes = snapshot_later.read_bytes - snapshot_earlier.read_bytes;
             let write_bytes = snapshot_later.write_bytes - snapshot_earlier.write_bytes;
@@ -52,19 +51,6 @@ impl IntervalData {
             })
         } else {
             None
-        }
-    }
-
-    fn targets_equal(targets1: &[i32], targets2: &[i32]) -> bool {
-        if targets1.len() != targets2.len() {
-            false
-        } else {
-            targets1
-                .iter()
-                .zip(targets2.iter())
-                .filter(|&(a, b)| a == b)
-                .count()
-                == targets1.len()
         }
     }
 }
@@ -169,11 +155,11 @@ impl ScalingAdapter {
         })
     }
 
-    pub fn add_tracee(&self, tracee_pid: i32) -> bool {
+    pub fn add_tracee(&mut self, tracee_pid: i32) -> bool {
         self.traceset.register_target(tracee_pid)
     }
 
-    pub fn remove_tracee(&self, tracee_pid: i32) -> bool {
+    pub fn remove_tracee(&mut self, tracee_pid: i32) -> bool {
         self.traceset.deregister_target(tracee_pid)
     }
 

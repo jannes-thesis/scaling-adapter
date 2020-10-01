@@ -73,17 +73,17 @@ pub extern "C" fn new_adapter(
 
 #[no_mangle]
 pub extern "C" fn add_tracee(tracee_pid: i32) -> bool {
-    let adapter_global = ADAPTER.write().unwrap();
+    let mut adapter_global = ADAPTER.write().unwrap();
     assert!((*adapter_global).is_some());
-    let adapter = adapter_global.as_ref().unwrap();
+    let adapter = adapter_global.as_mut().unwrap();
     adapter.add_tracee(tracee_pid)
 }
 
 #[no_mangle]
 pub extern "C" fn remove_tracee(tracee_pid: i32) -> bool {
-    let adapter_global = ADAPTER.write().unwrap();
+    let mut adapter_global = ADAPTER.write().unwrap();
     assert!((*adapter_global).is_some());
-    let adapter = adapter_global.as_ref().unwrap();
+    let adapter = adapter_global.as_mut().unwrap();
     adapter.remove_tracee(tracee_pid)
 }
 
