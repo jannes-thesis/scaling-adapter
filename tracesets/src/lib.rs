@@ -59,7 +59,9 @@ impl Traceset {
         unsafe {
             let targets_ptr = targets.to_vec().as_mut_ptr();
             let targets_amount = targets.len() as c_int;
-            let syscalls_ptr = syscalls.to_vec().as_mut_ptr();
+            // has to be mutable because the generated bindings need mut pointer
+            let mut syscalls_vec = syscalls.to_vec();
+            let syscalls_ptr = syscalls_vec.as_mut_ptr();
             let syscalls_amount = syscalls.len() as c_int;
             let traceset =
                 register_traceset(targets_ptr, targets_amount, syscalls_ptr, syscalls_amount);
@@ -70,7 +72,7 @@ impl Traceset {
                     _traceset: traceset,
                     id: (*(*traceset).data).traceset_id,
                     targets: HashSet::from_iter(targets.iter().copied()),
-                    syscalls: syscalls.to_vec(),
+                    syscalls: syscalls_vec,
                 })
             }
         }
@@ -219,7 +221,7 @@ mod tests {
         let echoer = spawn_echoer();
         let echoer_pid = echoer.process.id();
         println!("pid of echoer: {}", echoer_pid);
-        let write_syscall_nr = 61;
+        let write_syscall_nr = 1;
         let syscalls = vec![write_syscall_nr];
         let no_targets: Vec<i32> = vec![];
         // trace the write system call (should be called for every echo)
@@ -230,7 +232,7 @@ mod tests {
         // add echoer process to be traced
         let is_added = traceset.register_target(echoer_pid as i32);
         assert!(is_added);
-        thread::sleep(Duration::from_millis(1000));
+        thread::sleep(Duration::from_millis(1100));
         println!("read bytes: {}", traceset.get_read_bytes());
         println!("write bytes: {}", traceset.get_write_bytes());
         println!("traceset id: {}", traceset.id);
