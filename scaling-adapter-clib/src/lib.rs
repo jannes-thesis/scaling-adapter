@@ -90,12 +90,12 @@ pub extern "C" fn remove_tracee(tracee_pid: i32) -> bool {
 
 #[no_mangle]
 pub extern "C" fn get_scaling_advice() -> i32 {
-    let adapter_global = match ADAPTER.try_write() {
+    let mut adapter_global = match ADAPTER.try_write() {
         Ok(option) => option,
         Err(_) => return 0,
     };
     assert!((*adapter_global).is_some());
-    let adapter = adapter_global.as_ref().unwrap();
+    let adapter = adapter_global.as_mut().unwrap();
     adapter.get_scaling_advice()
 }
 

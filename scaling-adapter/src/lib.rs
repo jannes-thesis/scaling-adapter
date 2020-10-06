@@ -133,6 +133,21 @@ impl MetricsHistory {
         }
         result
     }
+
+    /// get interval metrics for specified interval
+    /// where index = 0 specifies latest interval, index = 1 previous etc.
+    pub fn get(&self, index: usize) -> Option<&IntervalMetrics> {
+        if index >= self.buffer.len() {
+            return None;
+        }
+        let buffer_index_latest = (self.next_index - 1) as i32;
+        let buffer_index = ((buffer_index_latest - (index as i32)) % (self.capacity as i32)) as usize;
+        self.buffer.get(buffer_index)
+    }
+
+    pub fn size(&self) -> usize {
+        self.buffer.len()
+    }
 }
 
 pub struct ScalingParameters {
@@ -149,8 +164,12 @@ pub struct ScalingAdapter {
     metrics_history: MetricsHistory,
     latest_snapshot: TracesetSnapshot,
     latest_snapshot_time: SystemTime,
+    recent_invalid_intervals: usize,
+    // 0 < x < 1, margin of error when comparing scale metrics
+    stability_factor: f64,
 }
 
+// synchronize access by wrapping with Arc<Mutex<_>>
 impl ScalingAdapter {
     pub fn new(params: ScalingParameters) -> Result<ScalingAdapter, AdapterError> {
         let traceset = Traceset::new(&Vec::new(), &params.syscall_nrs)
@@ -162,6 +181,8 @@ impl ScalingAdapter {
             metrics_history: MetricsHistory::new(),
             latest_snapshot: initial_snapshot,
             latest_snapshot_time: SystemTime::now(),
+            recent_invalid_intervals: 0,
+            stability_factor: 0.9,
         })
     }
 
@@ -192,9 +213,13 @@ impl ScalingAdapter {
                     interval_end: snapshot_time,
                 };
                 self.metrics_history.add(history_point);
+                self.recent_invalid_intervals = 0;
                 true
             }
-            None => false,
+            None => {
+                self.recent_invalid_intervals += 1;
+                false
+            }
         };
         self.latest_snapshot = snapshot;
         self.latest_snapshot_time = snapshot_time;
@@ -205,14 +230,37 @@ impl ScalingAdapter {
         self.metrics_history.last().get(0).copied()
     }
 
-    pub fn get_scaling_advice(&self) -> i32 {
+    pub fn get_scaling_advice(&mut self) -> i32 {
         let now = SystemTime::now();
         let elapsed = now
             .duration_since(self.latest_snapshot_time)
             .map(|duration| duration.as_millis())
             .unwrap_or(0);
         if elapsed >= self.parameters.check_interval_ms as u128 {
-            unimplemented!();
+            self.update();
+            // if latest interval not valid (amount targets changed)
+            if self.recent_invalid_intervals > 0 {
+                0
+            }
+            // after first valid interval always try scaling up
+            else if self.metrics_history.size() == 1 {
+                1
+            }
+            // otherwise compare latest interval with previous 
+            // metrics_history must already contain 2 entries
+            else {
+                let latest = self.metrics_history.get(0).unwrap();
+                let previous = self.metrics_history.get(1).unwrap();
+                if latest.derived_data.scale_metric * self.stability_factor > previous.derived_data.scale_metric {
+                    1
+                }
+                else if previous.derived_data.scale_metric * self.stability_factor > latest.derived_data.scale_metric {
+                    -1
+                }
+                else {
+                    0
+                }
+            }
         } else {
             0
         }

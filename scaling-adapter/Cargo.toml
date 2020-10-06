@@ -3,6 +3,7 @@ name = "scaling-adapter"
 version = "0.1.0"
 authors = ["jannes <jannes.dev@posteo.net>"]
 edition = "2018"
+# autotests = false
 
 [features]
 default = []
@@ -15,3 +16,7 @@ log = "0.4.11"
 [dev-dependencies]
 test-utils = { path = "../test-utils" }
 env_logger = "0.7.1"
+
+# [[test]]
+# name = "integration"
+# path = "tests/main.rs"

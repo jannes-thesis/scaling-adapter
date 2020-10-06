@@ -34,6 +34,7 @@ pub fn spawn_echoer() -> ProcessWrapper {
         process: Command::new("bash")
             .arg("-c")
             .arg("while true; do echo hi; sleep 1; done")
+            .stdout(Stdio::null())
             .spawn()
             .expect("bash command to exist"),
     }
