@@ -36,6 +36,7 @@ impl IntervalDataFFI {
     }
 }
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[no_mangle]
 pub extern "C" fn new_adapter(
     check_interval_ms: u64,
@@ -110,10 +111,8 @@ pub extern "C" fn close_adapter() {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use std::{thread, time};
     use test_utils::{has_tracesets, spawn_echoer};
-    use std::{
-        thread, time,
-    };
 
     unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalDerivedData {
         IntervalDerivedData {
@@ -132,7 +131,6 @@ mod tests {
             idle_metric: 0.0,
         }
     }
-
 
     fn calc_new_interval_metrics() -> IntervalDerivedData {
         let mut adapter_global = ADAPTER.write().unwrap();

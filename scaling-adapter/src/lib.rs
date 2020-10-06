@@ -4,6 +4,7 @@ use std::time::SystemTime;
 use errors::AdapterError;
 // need to make import public for it to be visible in dependant library/exe
 // https://stackoverflow.com/questions/62933825/why-we-need-to-specify-all-dependenciesincluding-transitives-in-rust
+use log::debug;
 pub use tracesets;
 use tracesets::{SyscallData, Traceset, TracesetSnapshot};
 
@@ -26,6 +27,10 @@ impl IntervalData {
         snapshot_earlier: &TracesetSnapshot,
         snapshot_later: &TracesetSnapshot,
     ) -> Option<IntervalData> {
+        debug!(
+            "create interval data, earlier snapshot targets: {:?}, new snapshot targets: {:?}",
+            snapshot_earlier.targets, snapshot_later.targets
+        );
         let targets_match = snapshot_earlier.targets.eq(&snapshot_later.targets);
         if targets_match {
             let read_bytes = snapshot_later.read_bytes - snapshot_earlier.read_bytes;
@@ -109,18 +114,22 @@ impl MetricsHistory {
     /// return the last interval metric datapoints, from newest to oldest
     pub fn last(&self) -> Vec<&IntervalMetrics> {
         let mut counter = self.buffer.len();
+        debug!(
+            "getting last interval metrics, buffer size: {}, current next_index: {}",
+            counter, self.next_index
+        );
         // if next_index is 0, counter will be 0 -> index's garbage value does not matter
         // TODO: fix bug, where index goes below 0
-        let mut index = self.next_index - 1;
         let mut result = Vec::with_capacity(counter);
+        let mut index = self.next_index;
         while counter > 0 {
-            result.push(self.buffer.get(index).unwrap());
-            counter -= 1;
             index = if index == 0 {
                 self.capacity - 1
             } else {
                 index - 1
             };
+            result.push(self.buffer.get(index).unwrap());
+            counter -= 1;
         }
         result
     }
@@ -173,7 +182,7 @@ impl ScalingAdapter {
         let snapshot = self.traceset.get_snapshot();
         let snapshot_time = SystemTime::now();
         let interval_data = IntervalData::new(&self.latest_snapshot, &snapshot);
-        match interval_data {
+        let is_success = match interval_data {
             Some(data) => {
                 let metrics = (self.parameters.calc_interval_metrics)(&data);
                 let history_point = IntervalMetrics {
@@ -183,12 +192,13 @@ impl ScalingAdapter {
                     interval_end: snapshot_time,
                 };
                 self.metrics_history.add(history_point);
-                self.latest_snapshot = snapshot;
-                self.latest_snapshot_time = snapshot_time;
                 true
             }
             None => false,
-        }
+        };
+        self.latest_snapshot = snapshot;
+        self.latest_snapshot_time = snapshot_time;
+        is_success
     }
 
     pub fn get_latest_metrics(&self) -> Option<&IntervalMetrics> {
@@ -212,10 +222,20 @@ impl ScalingAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use env_logger::Env;
+    use std::sync::Once;
+    use std::{thread, time};
     use test_utils::{has_tracesets, spawn_echoer};
-    use std::{
-        thread, time,
-    };
+
+    static INIT: Once = Once::new();
+
+    /// Setup function that is only run once, even if called multiple times.
+    fn setup() {
+        INIT.call_once(|| {
+            let env = Env::default().filter_or("MY_LOG_LEVEL", "debug");
+            env_logger::init_from_env(env);
+        });
+    }
 
     fn construct_dummy_history_big() -> MetricsHistory {
         let mut result = MetricsHistory::new();
@@ -233,7 +253,6 @@ mod tests {
         }
         result
     }
-
 
     #[test]
     fn metrics_history() {
@@ -265,6 +284,7 @@ mod tests {
     #[test]
     fn adapter_with_target() {
         assert!(has_tracesets());
+        setup();
         // create child process that just echos "hi" in a loop
         let echoer = spawn_echoer();
         let echoer_pid = echoer.process.id();
@@ -288,10 +308,15 @@ mod tests {
         // add sleeper process to be traced
         let is_added = adapter.add_tracee(echoer_pid as i32);
         assert!(is_added);
+        thread::sleep(time::Duration::from_millis(1000));
         // update adapter and get latest metric, verify scale_metric is > 0
-        adapter.update();
-        thread::sleep(time::Duration::from_millis(20000));
-        adapter.update();
+        let interval_valid = adapter.update();
+        // frst interval should not be valid, amount of targets changed
+        assert!(!interval_valid);
+        thread::sleep(time::Duration::from_millis(2000));
+        let interval_valid = adapter.update();
+        // second interval should be valid, amount of targets did not change
+        assert!(interval_valid);
         let latest_metrics = adapter
             .get_latest_metrics()
             .expect("adapter should have at least one datapoint in metrics history");

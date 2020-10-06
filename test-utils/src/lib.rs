@@ -1,4 +1,7 @@
-use std::{path::PathBuf, process::{Child, Command, Stdio}};
+use std::{
+    path::PathBuf,
+    process::{Child, Command, Stdio},
+};
 
 pub fn has_tracesets() -> bool {
     let mut script_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -38,8 +41,8 @@ pub fn spawn_echoer() -> ProcessWrapper {
 
 #[cfg(test)]
 mod tests {
-    use std::{thread, time};
     use super::*;
+    use std::{thread, time};
 
     #[test]
     fn test_echoer() {

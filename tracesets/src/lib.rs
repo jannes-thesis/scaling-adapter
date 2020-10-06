@@ -1,6 +1,6 @@
 extern crate tracesets_sys;
-use std::{collections::HashMap, collections::HashSet, os::raw::c_int, slice};
 use std::iter::FromIterator;
+use std::{collections::HashMap, collections::HashSet, os::raw::c_int, slice};
 
 use tracesets_sys::{
     __traceset_data, __traceset_syscall_data, deregister_traceset, deregister_traceset_target,
@@ -153,7 +153,7 @@ impl Traceset {
         }
     }
 
-    /// true: no kernel error occurred, target is guaranteed not to be traced 
+    /// true: no kernel error occurred, target is guaranteed not to be traced
     ///       (but may have not been a target before)
     /// false: kernel error
     pub fn deregister_target(&mut self, target: i32) -> bool {
@@ -188,11 +188,8 @@ impl Traceset {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{thread, time::Duration};
     use test_utils::{has_tracesets, spawn_echoer};
-    use std::{
-        thread,
-        time::Duration,
-    };
 
     #[cfg(target_os = "linux")]
     #[test]
