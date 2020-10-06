@@ -12,3 +12,5 @@ c_repr = []
 [dependencies]
 tracesets_sys = { path = "../tracesets-sys" }
 
+[dev-dependencies]
+test-utils = { path = "../test-utils" }

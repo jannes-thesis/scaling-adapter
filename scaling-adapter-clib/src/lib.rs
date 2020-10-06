@@ -110,8 +110,8 @@ pub extern "C" fn close_adapter() {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use test_utils::{has_tracesets, spawn_echoer};
     use std::{
-        process::{Child, Command},
         thread, time,
     };
 
@@ -133,13 +133,6 @@ mod tests {
         }
     }
 
-    fn spawn_sleeper() -> Child {
-        Command::new("bash")
-            .arg("-c")
-            .arg("while true; do sleep 1; done")
-            .spawn()
-            .expect("bash command to exist")
-    }
 
     fn calc_new_interval_metrics() -> IntervalDerivedData {
         let mut adapter_global = ADAPTER.write().unwrap();
@@ -154,28 +147,25 @@ mod tests {
             .derived_data
     }
 
-    #[test]
-    fn test_sleeper() {
-        let mut sleeper = spawn_sleeper();
-        thread::sleep(time::Duration::from_millis(50));
-        sleeper.kill().expect("no process to kill");
-    }
-
+    #[cfg(target_os = "linux")]
     #[test]
     #[serial]
     fn create_close() {
+        assert!(has_tracesets());
         let syscalls = vec![0, 1, 2];
         let is_created = new_adapter(1000, syscalls.as_ptr(), syscalls.len(), dummy_calc_fn);
         assert!(is_created);
         close_adapter();
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     #[serial]
     fn with_target() {
+        assert!(has_tracesets());
         // create child process that just sleeps in a loop
-        let mut sleeper_process = spawn_sleeper();
-        let sleeper_pid = sleeper_process.id();
+        let sleeper_process = spawn_echoer();
+        let sleeper_pid = sleeper_process.process.id();
         let nanosleep_syscall_nr = 35;
         let syscalls = vec![nanosleep_syscall_nr];
         // trace the nanosleep system call and set the scale_metric to the nanosleep call count
@@ -193,8 +183,5 @@ mod tests {
         let is_removed = remove_tracee(sleeper_pid as i32);
         assert!(is_removed);
         close_adapter();
-        sleeper_process
-            .kill()
-            .expect("sleeper process to be killed gracefully");
     }
 }

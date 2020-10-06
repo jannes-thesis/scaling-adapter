@@ -188,35 +188,16 @@ impl Traceset {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_utils::{has_tracesets, spawn_echoer};
     use std::{
-        process::{Child, Command},
         thread,
         time::Duration,
     };
 
-    // need to wrap child process so we can auto cleanup when tests panic
-    struct ProcessWrapper {
-        pub process: Child,
-    }
-
-    impl Drop for ProcessWrapper {
-        fn drop(&mut self) {
-            let _ = self.process.kill();
-        }
-    }
-
-    fn spawn_echoer() -> ProcessWrapper {
-        ProcessWrapper {
-            process: Command::new("bash")
-                .arg("-c")
-                .arg("while true; do echo hi; sleep 1; done")
-                .spawn()
-                .expect("bash command to exist"),
-        }
-    }
-
+    #[cfg(target_os = "linux")]
     #[test]
     fn single_target_added() {
+        assert!(has_tracesets());
         // create child process that just echos "hi" in a loop
         let echoer = spawn_echoer();
         let echoer_pid = echoer.process.id();

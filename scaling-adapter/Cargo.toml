@@ -10,3 +10,6 @@ c_repr = ["tracesets/c_repr"]
 
 [dependencies]
 tracesets = { path = "../tracesets" }
+
+[dev-dependencies]
+test-utils = { path = "../test-utils" }
