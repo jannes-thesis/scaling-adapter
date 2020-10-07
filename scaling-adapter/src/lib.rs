@@ -140,7 +140,7 @@ impl MetricsHistory {
         if index >= self.buffer.len() {
             return None;
         }
-        let buffer_index_latest = (self.next_index - 1) as i32;
+        let buffer_index_latest = (self.next_index as i32) - 1;
         let buffer_index =
             ((buffer_index_latest - (index as i32)) % (self.capacity as i32)) as usize;
         self.buffer.get(buffer_index)
@@ -257,7 +257,7 @@ impl ScalingAdapter {
                 {
                     1
                 } else if previous.derived_data.scale_metric * self.stability_factor
-                    > latest.derived_data.scale_metric
+                    > latest.derived_data.scale_metric && self.traceset.get_amount_targets() > 1
                 {
                     -1
                 } else {

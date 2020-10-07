@@ -9,7 +9,7 @@ mod utils;
 
 #[test]
 fn simple_test() {
-    let env = Env::default().filter_or("MY_LOG_LEVEL", "debug");
+    let env = Env::default().filter_or("MY_LOG_LEVEL", "simple_concurrent=debug");
     env_logger::init_from_env(env);
     let pid = get_pid();
     debug!("main startup, pid: {}", pid);

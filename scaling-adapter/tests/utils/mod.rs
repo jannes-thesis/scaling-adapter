@@ -104,6 +104,6 @@ pub fn write_garbage(out_index: usize) -> Result<(), Box<dyn Error>> {
 
 pub fn get_garbage_input() -> String {
     let mut path = get_test_data_dir();
-    path.push("input.txt");
+    path.push("10mb.txt");
     fs::read_to_string(path).expect("could not read file to string")
 }
