@@ -17,6 +17,8 @@ typedef struct {
 } SyscallData;
 
 typedef struct {
+  uint64_t start_ms;
+  uint64_t end_ms;
   uint64_t read_bytes;
   uint64_t write_bytes;
   const SyscallData *syscalls_data;

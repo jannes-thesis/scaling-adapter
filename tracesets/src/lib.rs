@@ -1,6 +1,6 @@
 extern crate tracesets_sys;
-use std::iter::FromIterator;
 use std::{collections::HashMap, collections::HashSet, os::raw::c_int, slice};
+use std::{iter::FromIterator, time::SystemTime};
 
 use tracesets_sys::{
     __traceset_data, __traceset_syscall_data, deregister_traceset, deregister_traceset_target,
@@ -25,6 +25,7 @@ pub struct TracesetSnapshot {
     pub write_bytes: u64,
     pub syscalls_data: HashMap<i32, SyscallData>,
     pub targets: HashSet<i32>,
+    pub timestamp: SystemTime,
 }
 
 impl Drop for Traceset {
@@ -79,15 +80,19 @@ impl Traceset {
     }
 
     pub fn get_snapshot(&self) -> TracesetSnapshot {
+        // the data will be slightly out of sync because we are reading non-atomically
+        // without holding a lock on the shared memory
         let read_bytes = self.get_read_bytes();
         let write_bytes = self.get_write_bytes();
         let syscalls_data = self.get_all_syscall_data();
         let targets = self.targets.clone();
+        let timestamp = SystemTime::now();
         TracesetSnapshot {
             read_bytes,
             write_bytes,
             syscalls_data,
             targets,
+            timestamp,
         }
     }
 

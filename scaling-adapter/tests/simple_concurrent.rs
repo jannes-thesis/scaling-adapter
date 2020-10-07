@@ -2,8 +2,8 @@ use std::{sync::Arc, sync::RwLock, thread, time::Duration};
 
 use env_logger::Env;
 use log::debug;
-use scaling_adapter::{IntervalDerivedData, ScalingAdapter, ScalingParameters};
-use utils::{get_pid, spawn_worker, WorkItem, WorkQueue};
+use scaling_adapter::{ScalingAdapter, ScalingParameters};
+use utils::{WorkItem, WorkQueue, get_pid, spawn_worker, written_bytes_per_ms};
 
 mod utils;
 
@@ -17,10 +17,7 @@ fn simple_test() {
     let params = ScalingParameters {
         check_interval_ms: 1000,
         syscall_nrs: vec![1, 2],
-        calc_interval_metrics: Box::new(|data| IntervalDerivedData {
-            scale_metric: data.write_bytes as f64,
-            idle_metric: data.write_bytes as f64,
-        }),
+        calc_interval_metrics: Box::new(written_bytes_per_ms),
     };
     let adapter = Arc::new(RwLock::new(
         ScalingAdapter::new(params).expect("adapter creation failed"),

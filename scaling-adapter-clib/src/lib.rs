@@ -16,6 +16,8 @@ lazy_static! {
 
 #[repr(C)]
 pub struct IntervalDataFFI {
+    pub start_ms: u64,
+    pub end_ms: u64,
     pub read_bytes: u64,
     pub write_bytes: u64,
     pub syscalls_data: *const SyscallData,
@@ -28,6 +30,8 @@ impl IntervalDataFFI {
     // when the original IntervalData reference is still valid
     pub fn new(data: &IntervalData) -> Self {
         IntervalDataFFI {
+            start_ms: data.start_millis(),
+            end_ms: data.start_millis(),
             read_bytes: data.read_bytes,
             write_bytes: data.write_bytes,
             syscalls_data: data.syscalls_data.as_ptr(),

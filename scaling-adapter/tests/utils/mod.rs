@@ -1,5 +1,6 @@
+use chrono::{DateTime, Local};
 use log::debug;
-use scaling_adapter::ScalingAdapter;
+use scaling_adapter::{IntervalData, IntervalDerivedData, ScalingAdapter};
 use std::{
     collections::VecDeque,
     error::Error,
@@ -40,8 +41,27 @@ impl WorkQueue {
     }
 }
 
+pub fn written_bytes_per_ms(interval_data: &IntervalData) -> IntervalDerivedData {
+    let duration_ms = interval_data.end_millis() - interval_data.start_millis();
+    // conversion to f64 precise for durations under 1000 years for sure
+    // conversion to f64 precise for under a petabyte of written bytes
+    let write_bytes_per_ms = (interval_data.write_bytes as f64) / (duration_ms as f64);
+    let interval_start: DateTime<Local> = interval_data.start.into();
+    let interval_end: DateTime<Local> = interval_data.end.into();
+    debug!(
+        "{} MB/sec written in interval from {} to {}",
+        write_bytes_per_ms / 1000.0,
+        interval_start.format("%H:%M:%S::%3f"),
+        interval_end.format("%H:%M:%S::%3f")
+    );
+    IntervalDerivedData {
+        scale_metric: write_bytes_per_ms,
+        idle_metric: write_bytes_per_ms,
+    }
+}
+
 pub fn get_pid() -> i32 {
-    unsafe { libc::syscall(libc::SYS_gettid) as i32}
+    unsafe { libc::syscall(libc::SYS_gettid) as i32 }
 }
 
 pub fn worker_function(
@@ -81,7 +101,7 @@ pub fn spawn_worker(
         worker_function(workers_clone, queue, adapter);
         // deregister before termination
         let worker_pid = get_pid();
-        adapter_clone.write().unwrap().remove_tracee(worker_pid); 
+        adapter_clone.write().unwrap().remove_tracee(worker_pid);
         debug!("worker terminating, pid: {}", worker_pid);
     });
     workers.write().unwrap().push(handle);

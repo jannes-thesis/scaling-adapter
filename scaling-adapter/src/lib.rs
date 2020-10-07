@@ -10,7 +10,11 @@ use tracesets::{SyscallData, Traceset, TracesetSnapshot};
 
 mod errors;
 
+/// describes one interval during execution
+/// all data is referring to the timeframe of interval
 pub struct IntervalData {
+    pub start: SystemTime,
+    pub end: SystemTime,
     pub read_bytes: u64,
     pub write_bytes: u64,
     // same order as syscall_nr vec passed in ScalingParameters
@@ -48,7 +52,11 @@ impl IntervalData {
                 };
                 syscalls_data.push(syscall_data_diff);
             }
+            let start = snapshot_earlier.timestamp;
+            let end = snapshot_later.timestamp;
             Some(IntervalData {
+                start,
+                end,
                 read_bytes,
                 write_bytes,
                 syscalls_data,
@@ -57,6 +65,22 @@ impl IntervalData {
         } else {
             None
         }
+    }
+
+    // can safely use as_millis as u64 (only overflow at unix epoch + half billion years)
+    pub fn start_millis(&self) -> u64 {
+        self.start
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("interval start before unix epoch")
+            .as_millis() as u64
+    }
+
+    // can safely use as_millis as u64 (only overflow at unix epoch + half billion years)
+    pub fn end_millis(&self) -> u64 {
+        self.end
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("interval start before unix epoch")
+            .as_millis() as u64
     }
 }
 
@@ -250,6 +274,7 @@ impl ScalingAdapter {
             // otherwise compare latest interval with previous
             // metrics_history must already contain 2 entries
             else {
+                // TODO: fix bug that causes metrics_history.get(0) to return None here
                 let latest = self.metrics_history.get(0).unwrap();
                 let previous = self.metrics_history.get(1).unwrap();
                 if latest.derived_data.scale_metric * self.stability_factor
