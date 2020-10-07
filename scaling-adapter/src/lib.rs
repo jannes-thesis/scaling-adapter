@@ -141,7 +141,8 @@ impl MetricsHistory {
             return None;
         }
         let buffer_index_latest = (self.next_index - 1) as i32;
-        let buffer_index = ((buffer_index_latest - (index as i32)) % (self.capacity as i32)) as usize;
+        let buffer_index =
+            ((buffer_index_latest - (index as i32)) % (self.capacity as i32)) as usize;
         self.buffer.get(buffer_index)
     }
 
@@ -246,18 +247,20 @@ impl ScalingAdapter {
             else if self.metrics_history.size() == 1 {
                 1
             }
-            // otherwise compare latest interval with previous 
+            // otherwise compare latest interval with previous
             // metrics_history must already contain 2 entries
             else {
                 let latest = self.metrics_history.get(0).unwrap();
                 let previous = self.metrics_history.get(1).unwrap();
-                if latest.derived_data.scale_metric * self.stability_factor > previous.derived_data.scale_metric {
+                if latest.derived_data.scale_metric * self.stability_factor
+                    > previous.derived_data.scale_metric
+                {
                     1
-                }
-                else if previous.derived_data.scale_metric * self.stability_factor > latest.derived_data.scale_metric {
+                } else if previous.derived_data.scale_metric * self.stability_factor
+                    > latest.derived_data.scale_metric
+                {
                     -1
-                }
-                else {
+                } else {
                     0
                 }
             }

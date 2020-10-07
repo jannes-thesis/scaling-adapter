@@ -16,6 +16,7 @@ log = "0.4.11"
 [dev-dependencies]
 test-utils = { path = "../test-utils" }
 env_logger = "0.7.1"
+libc = "0.2.79"
 
 # [[test]]
 # name = "integration"
