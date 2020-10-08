@@ -127,6 +127,7 @@ impl MetricsHistory {
     /// add a new interval metric to the history
     /// if buffer is full, the oldest entry is removed
     pub fn add(&mut self, datapoint: IntervalMetrics) {
+        debug!("adding interval metrics to history at buffer index {}", self.next_index);
         if self.next_index >= self.buffer.len() {
             self.buffer.push(datapoint);
         } else {
@@ -137,23 +138,15 @@ impl MetricsHistory {
 
     /// return the last interval metric datapoints, from newest to oldest
     pub fn last(&self) -> Vec<&IntervalMetrics> {
-        let mut counter = self.buffer.len();
         debug!(
             "getting last interval metrics, buffer size: {}, current next_index: {}",
-            counter, self.next_index
+            self.buffer.len(), self.next_index
         );
-        // if next_index is 0, counter will be 0 -> index's garbage value does not matter
-        // TODO: fix bug, where index goes below 0
-        let mut result = Vec::with_capacity(counter);
-        let mut index = self.next_index;
-        while counter > 0 {
-            index = if index == 0 {
-                self.capacity - 1
-            } else {
-                index - 1
-            };
-            result.push(self.buffer.get(index).unwrap());
-            counter -= 1;
+        let buffer_size = self.buffer.len();
+        let mut result = Vec::with_capacity(buffer_size);
+        for i in 0..buffer_size {
+            // maximum index is buffer size - 1, safe to unrwap option
+            result.push(self.get(i).unwrap());
         }
         result
     }
@@ -161,12 +154,18 @@ impl MetricsHistory {
     /// get interval metrics for specified interval
     /// where index = 0 specifies latest interval, index = 1 previous etc.
     pub fn get(&self, index: usize) -> Option<&IntervalMetrics> {
+        println!("getting index {}, buffer len: {}, next_index: {}", index, self.buffer.len(), self.next_index);
         if index >= self.buffer.len() {
             return None;
         }
-        let buffer_index_latest = (self.next_index as i32) - 1;
-        let buffer_index =
-            ((buffer_index_latest - (index as i32)) % (self.capacity as i32)) as usize;
+        // specified index denotes how many intervals before (next_index - 1)
+        let buffer_index_unconverted = (self.next_index as i32) - 1 - (index as i32);
+        let buffer_index = if buffer_index_unconverted >=0 {
+            buffer_index_unconverted as usize
+        } else {
+            ((self.capacity as i32) + buffer_index_unconverted) as usize
+        };
+        println!("converted index: {}", buffer_index);
         self.buffer.get(buffer_index)
     }
 
@@ -274,7 +273,6 @@ impl ScalingAdapter {
             // otherwise compare latest interval with previous
             // metrics_history must already contain 2 entries
             else {
-                // TODO: fix bug that causes metrics_history.get(0) to return None here
                 let latest = self.metrics_history.get(0).unwrap();
                 let previous = self.metrics_history.get(1).unwrap();
                 if latest.derived_data.scale_metric * self.stability_factor
@@ -299,7 +297,7 @@ impl ScalingAdapter {
 mod tests {
     use super::*;
     use env_logger::Env;
-    use std::sync::Once;
+    use std::{sync::Once, time::Duration};
     use std::{thread, time};
     use test_utils::{has_tracesets, spawn_echoer};
 
@@ -338,6 +336,10 @@ mod tests {
             assert_eq!(metrics.amount_targets, latest);
             latest -= 1;
         }
+        let latest_metrics = history.get(0);
+        let previous_metrics = history.get(0);
+        assert!(latest_metrics.is_some());
+        assert!(previous_metrics.is_some());
     }
 
     #[cfg(target_os = "linux")]
@@ -354,6 +356,27 @@ mod tests {
         };
         let adapter = ScalingAdapter::new(params);
         assert!(adapter.is_ok())
+    }
+
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn empty_adapter_scaling_advice() {
+        assert!(has_tracesets());
+        let params = ScalingParameters {
+            check_interval_ms: 1,
+            syscall_nrs: vec![1, 2],
+            calc_interval_metrics: Box::new(|_data| IntervalDerivedData {
+                scale_metric: 0.0,
+                idle_metric: 0.0,
+            }),
+        };
+        let mut adapter = ScalingAdapter::new(params).unwrap();
+        for i in 0..45 {
+            println!("index: {}", i);
+            let _advice = adapter.get_scaling_advice();
+            thread::sleep(Duration::from_millis(10));
+        }
     }
 
     #[cfg(target_os = "linux")]
