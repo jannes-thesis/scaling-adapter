@@ -3,13 +3,15 @@ use std::{sync::Arc, sync::RwLock, thread, time::Duration};
 use env_logger::Env;
 use log::debug;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use utils::{WorkItem, WorkQueue, get_pid, spawn_worker, written_bytes_per_ms};
+use utils::{WorkItem, WorkQueue, setup_garbage_input, get_pid, spawn_worker, written_bytes_per_ms};
 
 mod utils;
 
 #[test]
 fn simple_test() {
+    assert!(setup_garbage_input());
     let env = Env::default().filter_or("MY_LOG_LEVEL", "simple_concurrent=debug");
+    // let env = Env::default().filter_or("MY_LOG_LEVEL", "debug");
     env_logger::init_from_env(env);
     let pid = get_pid();
     debug!("main startup, pid: {}", pid);

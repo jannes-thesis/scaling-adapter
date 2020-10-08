@@ -10,6 +10,7 @@ use std::{
     sync::RwLock,
     thread::{self, JoinHandle},
 };
+use subprocess::{Exec, Pipeline};
 
 pub enum WorkItem {
     Write(usize),
@@ -107,6 +108,26 @@ pub fn spawn_worker(
     workers.write().unwrap().push(handle);
 }
 
+pub fn generate_test_data(filename: &str, megabytes: usize) -> Result<bool, Box<dyn Error>> {
+    let data_dir = get_test_data_dir();
+    if !data_dir.exists() {
+        fs::create_dir(data_dir.as_path())?;
+    }
+    let file = fs::File::create(data_dir.join(filename))?;
+
+    let pipe: Pipeline = {
+        Exec::shell("base64 /dev/urandom")
+            | Exec::cmd("head")
+                .arg("-c")
+                .arg((megabytes * 1000000).to_string())
+    };
+    let exit_status = pipe.stdout(file).join()?;
+    match exit_status {
+        subprocess::ExitStatus::Exited(i) => Ok(i == 0),
+        _ => Ok(false),
+    }
+}
+
 pub fn get_test_data_dir() -> PathBuf {
     let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     d.push("tests/data");
@@ -120,6 +141,19 @@ pub fn write_garbage(out_index: usize) -> Result<(), Box<dyn Error>> {
     fs::write(&output_path, garbage)?;
     fs::remove_file(&output_path)?;
     Ok(())
+}
+
+pub fn setup_garbage_input() -> bool {
+    let ten_mb_path = get_test_data_dir().join("10mb.txt");
+    if ten_mb_path.exists() {
+        return true;
+    }
+    match generate_test_data("10mb.txt", 10) {
+        Ok(b) => b,
+        Err(e) => {
+            panic!("error occured: {}", e);
+        }
+    }
 }
 
 pub fn get_garbage_input() -> String {
