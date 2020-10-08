@@ -154,7 +154,6 @@ impl MetricsHistory {
     /// get interval metrics for specified interval
     /// where index = 0 specifies latest interval, index = 1 previous etc.
     pub fn get(&self, index: usize) -> Option<&IntervalMetrics> {
-        println!("getting index {}, buffer len: {}, next_index: {}", index, self.buffer.len(), self.next_index);
         if index >= self.buffer.len() {
             return None;
         }
@@ -165,7 +164,6 @@ impl MetricsHistory {
         } else {
             ((self.capacity as i32) + buffer_index_unconverted) as usize
         };
-        println!("converted index: {}", buffer_index);
         self.buffer.get(buffer_index)
     }
 

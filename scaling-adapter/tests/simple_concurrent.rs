@@ -10,8 +10,8 @@ mod utils;
 #[test]
 fn simple_test() {
     assert!(setup_garbage_input());
-    let env = Env::default().filter_or("MY_LOG_LEVEL", "simple_concurrent=debug");
-    // let env = Env::default().filter_or("MY_LOG_LEVEL", "debug");
+    // let env = Env::default().filter_or("MY_LOG_LEVEL", "simple_concurrent=debug");
+    let env = Env::default().filter_or("MY_LOG_LEVEL", "debug");
     env_logger::init_from_env(env);
     let pid = get_pid();
     debug!("main startup, pid: {}", pid);
@@ -28,7 +28,7 @@ fn simple_test() {
     let workers = Arc::new(RwLock::new(Vec::new()));
 
     // fill up workqueue first before starting workers
-    for i in 1..10000 {
+    for i in 1..20000 {
         workqueue.push(WorkItem::Write(i as usize));
     }
 
