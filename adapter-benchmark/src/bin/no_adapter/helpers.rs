@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::{Arc}, thread};
 
 
-use adapter_benchmark::{WorkItem,  WorkQueue, get_pid, write_garbage};
+use adapter_benchmark::{WorkItem,  WorkQueue, get_pid, write_remove_garbage};
 use log::debug;
 
 
@@ -14,7 +14,7 @@ pub fn worker_function(
     while let Some(work_item) = queue.pop() {
         match work_item {
             WorkItem::Write(i) => {
-                let _ = write_garbage(input_path.as_path(), output_dir.as_path(), i);
+                let _ = write_remove_garbage(input_path.as_path(), output_dir.as_path(), i);
             }
             WorkItem::Clone => {
                 spawn_worker(

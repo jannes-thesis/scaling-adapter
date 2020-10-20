@@ -127,7 +127,10 @@ impl MetricsHistory {
     /// add a new interval metric to the history
     /// if buffer is full, the oldest entry is removed
     pub fn add(&mut self, datapoint: IntervalMetrics) {
-        debug!("adding interval metrics to history at buffer index {}", self.next_index);
+        debug!(
+            "adding interval metrics to history at buffer index {}",
+            self.next_index
+        );
         if self.next_index >= self.buffer.len() {
             self.buffer.push(datapoint);
         } else {
@@ -140,7 +143,8 @@ impl MetricsHistory {
     pub fn last(&self) -> Vec<&IntervalMetrics> {
         debug!(
             "getting last interval metrics, buffer size: {}, current next_index: {}",
-            self.buffer.len(), self.next_index
+            self.buffer.len(),
+            self.next_index
         );
         let buffer_size = self.buffer.len();
         let mut result = Vec::with_capacity(buffer_size);
@@ -159,12 +163,17 @@ impl MetricsHistory {
         }
         // specified index denotes how many intervals before (next_index - 1)
         let buffer_index_unconverted = (self.next_index as i32) - 1 - (index as i32);
-        let buffer_index = if buffer_index_unconverted >=0 {
+        let buffer_index = if buffer_index_unconverted >= 0 {
             buffer_index_unconverted as usize
         } else {
             ((self.capacity as i32) + buffer_index_unconverted) as usize
         };
         self.buffer.get(buffer_index)
+    }
+
+    pub fn clear(&mut self)  {
+        self.buffer.clear();
+        self.next_index = 0;
     }
 
     pub fn size(&self) -> usize {
@@ -189,6 +198,8 @@ pub struct ScalingAdapter {
     recent_invalid_intervals: usize,
     // 0 < x < 1, margin of error when comparing scale metrics
     stability_factor: f64,
+    // maximum of idle metric in current phase
+    max_idle_metric: f64,
 }
 
 // synchronize access by wrapping with Arc<Mutex<_>>
@@ -205,6 +216,7 @@ impl ScalingAdapter {
             latest_snapshot_time: SystemTime::now(),
             recent_invalid_intervals: 0,
             stability_factor: 0.9,
+            max_idle_metric: 0.0,
         })
     }
 
@@ -234,6 +246,12 @@ impl ScalingAdapter {
                     interval_start: self.latest_snapshot_time,
                     interval_end: snapshot_time,
                 };
+                self.max_idle_metric =
+                    if self.max_idle_metric > history_point.derived_data.idle_metric {
+                        self.max_idle_metric
+                    } else {
+                        history_point.derived_data.idle_metric
+                    };
                 self.metrics_history.add(history_point);
                 self.recent_invalid_intervals = 0;
                 true
@@ -252,6 +270,16 @@ impl ScalingAdapter {
         self.metrics_history.last().get(0).copied()
     }
 
+    // TODO: take more than last datapoint into account
+    fn phase_change(&self) -> bool {
+        if let Some(latest_metrics) = self.metrics_history.get(0) {
+            if latest_metrics.derived_data.idle_metric < 0.5 * self.max_idle_metric {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn get_scaling_advice(&mut self) -> i32 {
         let now = SystemTime::now();
         let elapsed = now
@@ -268,6 +296,13 @@ impl ScalingAdapter {
             else if self.metrics_history.size() == 1 {
                 1
             }
+            // if phase change is detected rescale from 1
+            else if self.phase_change() {
+                debug!("{}", "detected phase change");
+                self.metrics_history.clear();
+                // if any worker dies before the advice is acted on, pool size could drop to 0 if not checked 
+                (-(self.traceset.get_amount_targets() as i32)) + 1
+            }
             // otherwise compare latest interval with previous
             // metrics_history must already contain 2 entries
             else {
@@ -278,7 +313,8 @@ impl ScalingAdapter {
                 {
                     1
                 } else if previous.derived_data.scale_metric * self.stability_factor
-                    > latest.derived_data.scale_metric && self.traceset.get_amount_targets() > 1
+                    > latest.derived_data.scale_metric
+                    && self.traceset.get_amount_targets() > 1
                 {
                     -1
                 } else {
@@ -355,7 +391,6 @@ mod tests {
         let adapter = ScalingAdapter::new(params);
         assert!(adapter.is_ok())
     }
-
 
     #[cfg(target_os = "linux")]
     #[test]

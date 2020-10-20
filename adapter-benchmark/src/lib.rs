@@ -1,7 +1,7 @@
 use chrono::{DateTime, Local};
 use log::debug;
 use scaling_adapter::{IntervalData, IntervalDerivedData};
-use std::{collections::VecDeque, error::Error, fs, path::Path, sync::RwLock};
+use std::{collections::VecDeque, error::Error, fs::{self, File}, io::Write, path::Path, sync::RwLock};
 
 pub enum WorkItem {
     Write(usize),
@@ -57,14 +57,21 @@ pub fn get_pid() -> i32 {
     unsafe { libc::syscall(libc::SYS_gettid) as i32 }
 }
 
-pub fn write_garbage(
-    input_path: &Path,
+pub fn write_remove_garbage(
+    garbage_path: &Path,
     output_dir: &Path,
     out_index: usize,
 ) -> Result<(), Box<dyn Error>> {
-    let garbage = fs::read_to_string(input_path).expect("could not read file to string");
+    let garbage = fs::read_to_string(garbage_path).expect("could not read file to string");
     let output_path = output_dir.join(format!("out{}.txt", out_index));
-    fs::write(&output_path, garbage)?;
+    write_remove(&garbage , &output_path)
+}
+
+pub fn write_remove(content: &str, output_path: &Path) -> Result<(), Box<dyn Error>> {
+    let mut file = File::create(output_path)?;
+    file.write_all(content.as_bytes())?;
+    file.sync_all()?;
+    drop(file);
     fs::remove_file(&output_path)?;
     Ok(())
 }
