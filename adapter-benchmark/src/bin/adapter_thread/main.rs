@@ -7,7 +7,8 @@ use std::{
 
 use clap::{App, Arg};
 use env_logger::Env;
-use helpers::{get_pid, spawn_worker, written_bytes_per_ms, WorkItem, WorkQueue};
+use adapter_benchmark::{get_pid, written_bytes_per_ms, WorkItem, WorkQueue};
+use helpers::spawn_worker;
 use log::{debug, info};
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
 
