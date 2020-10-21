@@ -89,14 +89,14 @@ impl IntervalData {
 #[derive(Clone, Copy, Debug)]
 pub struct IntervalDerivedData {
     pub scale_metric: f64,
-    pub idle_metric: f64,
+    pub reset_metric: f64,
 }
 
 #[cfg(not(feature = "c_repr"))]
 #[derive(Clone, Copy, Debug)]
 pub struct IntervalDerivedData {
     pub scale_metric: f64,
-    pub idle_metric: f64,
+    pub reset_metric: f64,
 }
 
 pub struct IntervalMetrics {
@@ -171,7 +171,7 @@ impl MetricsHistory {
         self.buffer.get(buffer_index)
     }
 
-    pub fn clear(&mut self)  {
+    pub fn clear(&mut self) {
         self.buffer.clear();
         self.next_index = 0;
     }
@@ -182,24 +182,64 @@ impl MetricsHistory {
 }
 
 pub struct ScalingParameters {
-    pub check_interval_ms: u64,
     pub syscall_nrs: Vec<i32>,
     // calc_interval_metrics: fn(&IntervalData) -> IntervalMetrics,
     // allow closures, but restrict to thread-safe (implement Send, Sync)
-    pub calc_interval_metrics: Box<dyn Fn(&IntervalData) -> IntervalDerivedData + Send + Sync>,
+    pub calc_metrics: Box<dyn Fn(&IntervalData) -> IntervalDerivedData + Send + Sync>,
+    /// minimum amount of time to pass before new interval starts
+    pub check_interval_ms: u64,
+    /// 0 < x < 1, margin of error when comparing scale metrics
+    pub stability_factor: f64,
+}
+
+impl ScalingParameters {
+    pub fn new(
+        syscall_nrs: Vec<i32>,
+        calc_metrics: Box<dyn Fn(&IntervalData) -> IntervalDerivedData + Send + Sync>,
+    ) -> Self {
+        let default_check_interval_ms = 1000;
+        let default_stability_factor = 0.9;
+        ScalingParameters {
+            syscall_nrs,
+            calc_metrics,
+            check_interval_ms: default_check_interval_ms,
+            stability_factor: default_stability_factor,
+        }
+    }
+
+    pub fn with_check_interval_ms(mut self, check_interval_ms: u64) -> Self {
+        self.check_interval_ms = check_interval_ms;
+        self
+    }
+
+    /// stability factor should be > 0 and < 1
+    pub fn with_stability_factor(mut self, stability_factor: f64) -> Self {
+        self.stability_factor = stability_factor;
+        self
+    }
+}
+
+enum AdapterState {
+    Startup,
+    Scaling,
+    Settled,
 }
 
 pub struct ScalingAdapter {
     parameters: ScalingParameters,
     traceset: Traceset,
+    state: AdapterState,
     metrics_history: MetricsHistory,
     latest_snapshot: TracesetSnapshot,
     latest_snapshot_time: SystemTime,
     recent_invalid_intervals: usize,
-    // 0 < x < 1, margin of error when comparing scale metrics
-    stability_factor: f64,
     // maximum of idle metric in current phase
-    max_idle_metric: f64,
+    max_reset_metric: f64,
+}
+enum PhaseChange {
+    NoChange,
+    PerfDrop,
+    PerfRise,
 }
 
 // synchronize access by wrapping with Arc<Mutex<_>>
@@ -211,12 +251,12 @@ impl ScalingAdapter {
         Ok(ScalingAdapter {
             parameters: params,
             traceset,
+            state: AdapterState::Startup,
             metrics_history: MetricsHistory::new(),
             latest_snapshot: initial_snapshot,
             latest_snapshot_time: SystemTime::now(),
             recent_invalid_intervals: 0,
-            stability_factor: 0.9,
-            max_idle_metric: 0.0,
+            max_reset_metric: 0.0,
         })
     }
 
@@ -239,18 +279,18 @@ impl ScalingAdapter {
         let interval_data = IntervalData::new(&self.latest_snapshot, &snapshot);
         let is_success = match interval_data {
             Some(data) => {
-                let metrics = (self.parameters.calc_interval_metrics)(&data);
+                let metrics = (self.parameters.calc_metrics)(&data);
                 let history_point = IntervalMetrics {
                     derived_data: metrics,
                     amount_targets: self.latest_snapshot.targets.len(),
                     interval_start: self.latest_snapshot_time,
                     interval_end: snapshot_time,
                 };
-                self.max_idle_metric =
-                    if self.max_idle_metric > history_point.derived_data.idle_metric {
-                        self.max_idle_metric
+                self.max_reset_metric =
+                    if self.max_reset_metric > history_point.derived_data.reset_metric {
+                        self.max_reset_metric
                     } else {
-                        history_point.derived_data.idle_metric
+                        history_point.derived_data.reset_metric
                     };
                 self.metrics_history.add(history_point);
                 self.recent_invalid_intervals = 0;
@@ -271,13 +311,63 @@ impl ScalingAdapter {
     }
 
     // TODO: take more than last datapoint into account
-    fn phase_change(&self) -> bool {
+    fn phase_change(&self) -> PhaseChange {
         if let Some(latest_metrics) = self.metrics_history.get(0) {
-            if latest_metrics.derived_data.idle_metric < 0.5 * self.max_idle_metric {
-                return true;
+            if latest_metrics.derived_data.reset_metric < 0.5 * self.max_reset_metric {
+                return PhaseChange::PerfDrop;
             }
         }
-        false
+        PhaseChange::NoChange
+    }
+
+    fn scaling_advice_startup(&mut self) -> i32 {
+        self.state = AdapterState::Scaling;
+        1
+    }
+
+    fn scaling_advice_settled(&mut self) -> i32 {
+        match self.phase_change() {
+            PhaseChange::NoChange => {
+                0
+            }
+            // restart scaling from 1
+            PhaseChange::PerfDrop => {
+                debug!("{}", "PHASE CHANGE: detected peformance drop");
+                self.state = AdapterState::Startup;
+                // if any worker dies before the advice is acted on, pool size could drop to 0 if not checked
+                (-(self.traceset.get_amount_targets() as i32)) + 1
+            }
+            // resume scaling from current size
+            PhaseChange::PerfRise => {
+                debug!("{}", "PHASE CHANGE: detected peformance rise");
+                self.state = AdapterState::Scaling;
+                1
+            }
+        }
+    }
+
+    fn scaling_advice_scaling(&mut self) -> i32 {
+        // compare latest interval with previous
+        // metrics_history must already contain 2 entries
+        let latest = self.metrics_history.get(0).unwrap();
+        let previous = self.metrics_history.get(1).unwrap();
+        // scale further up
+        if latest.derived_data.scale_metric * self.parameters.stability_factor
+            > previous.derived_data.scale_metric
+        {
+            1
+        // scale back to previous & enter settled state
+        } else if previous.derived_data.scale_metric * self.parameters.stability_factor
+            > latest.derived_data.scale_metric
+            && self.traceset.get_amount_targets() > 1
+        {
+            self.state = AdapterState::Settled;
+            -1
+        // enter settled state
+        } else {
+            self.state = AdapterState::Settled;
+            0
+        }
     }
 
     pub fn get_scaling_advice(&mut self) -> i32 {
@@ -290,36 +380,12 @@ impl ScalingAdapter {
             self.update();
             // if latest interval not valid (amount targets changed)
             if self.recent_invalid_intervals > 0 {
-                0
+                return 0;
             }
-            // after first valid interval always try scaling up
-            else if self.metrics_history.size() == 1 {
-                1
-            }
-            // if phase change is detected rescale from 1
-            else if self.phase_change() {
-                debug!("{}", "detected phase change");
-                self.metrics_history.clear();
-                // if any worker dies before the advice is acted on, pool size could drop to 0 if not checked 
-                (-(self.traceset.get_amount_targets() as i32)) + 1
-            }
-            // otherwise compare latest interval with previous
-            // metrics_history must already contain 2 entries
-            else {
-                let latest = self.metrics_history.get(0).unwrap();
-                let previous = self.metrics_history.get(1).unwrap();
-                if latest.derived_data.scale_metric * self.stability_factor
-                    > previous.derived_data.scale_metric
-                {
-                    1
-                } else if previous.derived_data.scale_metric * self.stability_factor
-                    > latest.derived_data.scale_metric
-                    && self.traceset.get_amount_targets() > 1
-                {
-                    -1
-                } else {
-                    0
-                }
+            match self.state {
+                AdapterState::Startup => self.scaling_advice_startup(),
+                AdapterState::Scaling => self.scaling_advice_scaling(),
+                AdapterState::Settled => self.scaling_advice_settled(),
             }
         } else {
             0
@@ -351,7 +417,7 @@ mod tests {
             let dummy = IntervalMetrics {
                 derived_data: IntervalDerivedData {
                     scale_metric: i as f64,
-                    idle_metric: i as f64,
+                    reset_metric: i as f64,
                 },
                 amount_targets: i,
                 interval_start: SystemTime::now(),
@@ -380,14 +446,13 @@ mod tests {
     #[test]
     fn create_empty_adapter() {
         assert!(has_tracesets());
-        let params = ScalingParameters {
-            check_interval_ms: 1000,
-            syscall_nrs: vec![1, 2],
-            calc_interval_metrics: Box::new(|_data| IntervalDerivedData {
+        let params = ScalingParameters::new(
+            vec![1, 2],
+            Box::new(|_data| IntervalDerivedData {
                 scale_metric: 0.0,
-                idle_metric: 0.0,
+                reset_metric: 0.0,
             }),
-        };
+        );
         let adapter = ScalingAdapter::new(params);
         assert!(adapter.is_ok())
     }
@@ -396,14 +461,14 @@ mod tests {
     #[test]
     fn empty_adapter_scaling_advice() {
         assert!(has_tracesets());
-        let params = ScalingParameters {
-            check_interval_ms: 1,
-            syscall_nrs: vec![1, 2],
-            calc_interval_metrics: Box::new(|_data| IntervalDerivedData {
+        let params = ScalingParameters::new(
+            vec![1, 2],
+            Box::new(|_data| IntervalDerivedData {
                 scale_metric: 0.0,
-                idle_metric: 0.0,
+                reset_metric: 0.0,
             }),
-        };
+        )
+        .with_check_interval_ms(1);
         let mut adapter = ScalingAdapter::new(params).unwrap();
         for i in 0..45 {
             println!("index: {}", i);
@@ -425,14 +490,13 @@ mod tests {
         let syscalls = vec![write_syscall_nr];
         // trace the write system call (should be called for every echo)
         // and set the scale_metric to the close call count
-        let params = ScalingParameters {
-            check_interval_ms: 1000,
-            syscall_nrs: syscalls,
-            calc_interval_metrics: Box::new(|data| IntervalDerivedData {
+        let params = ScalingParameters::new(
+            syscalls,
+            Box::new(|data| IntervalDerivedData {
                 scale_metric: data.syscalls_data.get(0).unwrap().count as f64,
-                idle_metric: 0.0,
+                reset_metric: 0.0,
             }),
-        };
+        );
         let mut adapter = match ScalingAdapter::new(params) {
             Ok(a) => a,
             _ => panic!("adapter creation failed"),

@@ -5,9 +5,9 @@ use std::{
     time::Duration,
 };
 
+use adapter_benchmark::{get_pid, written_bytes_per_ms, WorkItem, WorkQueue};
 use clap::{App, Arg};
 use env_logger::Env;
-use adapter_benchmark::{get_pid, written_bytes_per_ms, WorkItem, WorkQueue};
 use helpers::spawn_worker;
 use log::{debug, info};
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
@@ -20,11 +20,7 @@ fn run(input_path: &Path, output_dir: &Path, amount_items: usize, static_size: O
     let pid = get_pid();
     debug!("main startup, pid: {}", pid);
 
-    let params = ScalingParameters {
-        check_interval_ms: 1000,
-        syscall_nrs: vec![1, 2],
-        calc_interval_metrics: Box::new(written_bytes_per_ms),
-    };
+    let params = ScalingParameters::new(vec![1, 2], Box::new(written_bytes_per_ms));
     let adapter = Arc::new(RwLock::new(
         ScalingAdapter::new(params).expect("adapter creation failed"),
     ));
@@ -144,12 +140,12 @@ fn main() {
 
     match static_size {
         Some(size_str) => {
-            let size = size_str.parse::<usize>().expect("pool size must be positive");
+            let size = size_str
+                .parse::<usize>()
+                .expect("pool size must be positive");
             assert!(size > 0, "pool size must be positive");
             run(input_path, output_dir, amount_items, Some(size))
         }
-        None => {
-            run(input_path, output_dir, amount_items, None)
-        }
+        None => run(input_path, output_dir, amount_items, None),
     }
 }

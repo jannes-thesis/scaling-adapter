@@ -1,6 +1,6 @@
 use std::{path::Path, sync::Arc, thread, time::Duration};
 
-use adapter_benchmark::{WorkItem, WorkQueue, get_pid};
+use adapter_benchmark::{get_pid, WorkItem, WorkQueue};
 use clap::{App, Arg};
 use env_logger::Env;
 use helpers::spawn_worker;

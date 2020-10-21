@@ -1,4 +1,10 @@
-use std::{fs, path::Path, sync::mpsc::{self, TryRecvError}, thread, time::Duration};
+use std::{
+    fs,
+    path::Path,
+    sync::mpsc::{self, TryRecvError},
+    thread,
+    time::Duration,
+};
 
 use adapter_benchmark::write_remove;
 use clap::{App, Arg};

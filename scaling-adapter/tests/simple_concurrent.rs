@@ -3,7 +3,9 @@ use std::{sync::Arc, sync::RwLock, thread, time::Duration};
 use env_logger::Env;
 use log::debug;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use utils::{WorkItem, WorkQueue, setup_garbage_input, get_pid, spawn_worker, written_bytes_per_ms};
+use utils::{
+    get_pid, setup_garbage_input, spawn_worker, written_bytes_per_ms, WorkItem, WorkQueue,
+};
 
 mod utils;
 
@@ -16,11 +18,7 @@ fn simple_test() {
     let pid = get_pid();
     debug!("main startup, pid: {}", pid);
 
-    let params = ScalingParameters {
-        check_interval_ms: 1000,
-        syscall_nrs: vec![1, 2],
-        calc_interval_metrics: Box::new(written_bytes_per_ms),
-    };
+    let params = ScalingParameters::new(vec![1, 2], Box::new(written_bytes_per_ms));
     let adapter = Arc::new(RwLock::new(
         ScalingAdapter::new(params).expect("adapter creation failed"),
     ));

@@ -8,7 +8,7 @@
 
 typedef struct {
   double scale_metric;
-  double idle_metric;
+  double reset_metric;
 } IntervalDerivedData;
 
 typedef struct {

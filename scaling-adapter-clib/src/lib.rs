@@ -67,11 +67,8 @@ pub extern "C" fn new_adapter(
         derived_data
     });
 
-    let params = ScalingParameters {
-        check_interval_ms,
-        syscall_nrs: syscalls_vec,
-        calc_interval_metrics: calc_f,
-    };
+    let params =
+        ScalingParameters::new(syscalls_vec, calc_f).with_check_interval_ms(check_interval_ms);
     *adapter_global = ScalingAdapter::new(params).ok();
     (*adapter_global).is_some()
 }
@@ -121,7 +118,7 @@ mod tests {
     unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalDerivedData {
         IntervalDerivedData {
             scale_metric: 0.0,
-            idle_metric: 0.0,
+            reset_metric: 0.0,
         }
     }
 
@@ -132,7 +129,7 @@ mod tests {
         let nanosleep_call_count = syscalls_data_vec.get_unchecked(0).count;
         IntervalDerivedData {
             scale_metric: nanosleep_call_count as f64,
-            idle_metric: 0.0,
+            reset_metric: 0.0,
         }
     }
 

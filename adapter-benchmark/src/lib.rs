@@ -1,7 +1,14 @@
 use chrono::{DateTime, Local};
 use log::debug;
 use scaling_adapter::{IntervalData, IntervalDerivedData};
-use std::{collections::VecDeque, error::Error, fs::{self, File}, io::Write, path::Path, sync::RwLock};
+use std::{
+    collections::VecDeque,
+    error::Error,
+    fs::{self, File},
+    io::Write,
+    path::Path,
+    sync::RwLock,
+};
 
 pub enum WorkItem {
     Write(usize),
@@ -49,7 +56,7 @@ pub fn written_bytes_per_ms(interval_data: &IntervalData) -> IntervalDerivedData
     );
     IntervalDerivedData {
         scale_metric: write_bytes_per_ms,
-        idle_metric: write_bytes_per_ms,
+        reset_metric: write_bytes_per_ms,
     }
 }
 
@@ -64,7 +71,7 @@ pub fn write_remove_garbage(
 ) -> Result<(), Box<dyn Error>> {
     let garbage = fs::read_to_string(garbage_path).expect("could not read file to string");
     let output_path = output_dir.join(format!("out{}.txt", out_index));
-    write_remove(&garbage , &output_path)
+    write_remove(&garbage, &output_path)
 }
 
 pub fn write_remove(content: &str, output_path: &Path) -> Result<(), Box<dyn Error>> {

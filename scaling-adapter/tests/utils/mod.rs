@@ -57,7 +57,7 @@ pub fn written_bytes_per_ms(interval_data: &IntervalData) -> IntervalDerivedData
     );
     IntervalDerivedData {
         scale_metric: write_bytes_per_ms,
-        idle_metric: write_bytes_per_ms,
+        reset_metric: write_bytes_per_ms,
     }
 }
 

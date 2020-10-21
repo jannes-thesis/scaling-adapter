@@ -1,10 +1,12 @@
-use std::{path::PathBuf, sync::{Arc, RwLock}, thread};
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+    thread,
+};
 
-
-use adapter_benchmark::{WorkItem,  WorkQueue, get_pid, write_remove_garbage};
-use log::{debug};
-use scaling_adapter::{ScalingAdapter};
-
+use adapter_benchmark::{get_pid, write_remove_garbage, WorkItem, WorkQueue};
+use log::debug;
+use scaling_adapter::ScalingAdapter;
 
 pub fn worker_function(
     queue: Arc<WorkQueue>,
