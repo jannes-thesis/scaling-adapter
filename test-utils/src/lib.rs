@@ -40,6 +40,17 @@ pub fn spawn_echoer() -> ProcessWrapper {
     }
 }
 
+pub fn spawn_sleeper() -> ProcessWrapper {
+    ProcessWrapper {
+        process: Command::new("bash")
+            .arg("-c")
+            .arg("while true; do sleep 1; done")
+            .stdout(Stdio::null())
+            .spawn()
+            .expect("bash command to exist"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

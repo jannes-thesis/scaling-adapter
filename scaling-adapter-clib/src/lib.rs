@@ -113,7 +113,7 @@ mod tests {
     use super::*;
     use serial_test::serial;
     use std::{thread, time};
-    use test_utils::{has_tracesets, spawn_echoer};
+    use test_utils::{has_tracesets, spawn_sleeper};
 
     unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalDerivedData {
         IntervalDerivedData {
@@ -163,7 +163,7 @@ mod tests {
     fn with_target() {
         assert!(has_tracesets());
         // create child process that just sleeps in a loop
-        let sleeper_process = spawn_echoer();
+        let sleeper_process = spawn_sleeper();
         let sleeper_pid = sleeper_process.process.id();
         let nanosleep_syscall_nr = 35;
         let syscalls = vec![nanosleep_syscall_nr];
