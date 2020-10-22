@@ -573,7 +573,9 @@ name = "scaling-adapter-clib"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
+ "env_logger",
  "lazy_static",
+ "log",
  "scaling-adapter",
  "serial_test",
  "test-utils",

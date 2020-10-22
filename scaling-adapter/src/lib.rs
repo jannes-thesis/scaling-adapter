@@ -12,6 +12,7 @@ mod errors;
 
 /// describes one interval during execution
 /// all data is referring to the timeframe of interval
+#[derive(Debug)]
 pub struct IntervalData {
     pub start: SystemTime,
     pub end: SystemTime,
@@ -486,7 +487,7 @@ mod tests {
         let echoer = spawn_echoer();
         let echoer_pid = echoer.process.id();
         println!("pid of echoer: {}", echoer_pid);
-        let write_syscall_nr = 61;
+        let write_syscall_nr = 1;
         let syscalls = vec![write_syscall_nr];
         // trace the write system call (should be called for every echo)
         // and set the scale_metric to the close call count

@@ -1,6 +1,7 @@
 use std::{ptr, sync::RwLock};
 
 use lazy_static::lazy_static;
+use log::debug;
 use scaling_adapter::tracesets::SyscallData;
 use scaling_adapter::{IntervalData, IntervalDerivedData, ScalingAdapter, ScalingParameters};
 
@@ -62,6 +63,7 @@ pub extern "C" fn new_adapter(
 
     // convert C function pointer to correct Rust closure
     let calc_f = Box::new(|interval_data: &IntervalData| -> IntervalDerivedData {
+        debug!("original interval data:{:?},", interval_data);
         let converted = IntervalDataFFI::new(interval_data);
         let derived_data = unsafe { CALC_METRICS_FFI.read().unwrap().unwrap()(&converted) };
         derived_data
@@ -111,7 +113,8 @@ pub extern "C" fn close_adapter() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
+        use env_logger::Env;
+use serial_test::serial;
     use std::{thread, time};
     use test_utils::{has_tracesets, spawn_sleeper};
 
@@ -162,22 +165,24 @@ mod tests {
     #[serial]
     fn with_target() {
         assert!(has_tracesets());
+        let env = Env::default().filter_or("MY_LOG_LEVEL", "info");
+        env_logger::init_from_env(env);
         // create child process that just sleeps in a loop
         let sleeper_process = spawn_sleeper();
         let sleeper_pid = sleeper_process.process.id();
-        let nanosleep_syscall_nr = 35;
-        let syscalls = vec![nanosleep_syscall_nr];
+        debug!("sleeper pid: {}", sleeper_pid);
+        let wait_syscall_nr = 61;
+        let syscalls = vec![wait_syscall_nr];
         // trace the nanosleep system call and set the scale_metric to the nanosleep call count
         let is_created = new_adapter(1000, syscalls.as_ptr(), syscalls.len(), constant_calc_fn);
         assert!(is_created);
         // add sleeper process to be traced
         let is_added = add_tracee(sleeper_pid as i32);
         assert!(is_added);
-        // update adapter and get latest metric, verify scale_metric equals nanosleep syscall count (should be 1)
+        // update adapter and get latest metric, verify scale_metric equals wait syscall count (should be more than 1)
         let lastest_metric = calc_new_interval_metrics();
         println!("latest metric: {:?}", &lastest_metric);
         assert!(lastest_metric.scale_metric > 0.9);
-        assert!(lastest_metric.scale_metric < 1.1);
         // remove traceee
         let is_removed = remove_tracee(sleeper_pid as i32);
         assert!(is_removed);
