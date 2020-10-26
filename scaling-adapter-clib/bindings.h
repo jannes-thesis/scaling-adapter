@@ -27,16 +27,20 @@ typedef struct {
 
 typedef IntervalDerivedData (*CalcMetricsFunFFI)(const IntervalDataFFI*);
 
+typedef struct {
+  uint64_t check_interval_ms;
+  const int32_t *syscall_nrs;
+  uintptr_t amount_syscalls;
+  CalcMetricsFunFFI calc_interval_metrics;
+} AdapterParameters;
+
 bool add_tracee(int32_t tracee_pid);
 
 void close_adapter(void);
 
 int32_t get_scaling_advice(void);
 
-bool new_adapter(uint64_t check_interval_ms,
-                 const int32_t *syscall_nrs,
-                 uintptr_t amount_syscalls,
-                 CalcMetricsFunFFI calc_interval_metrics);
+bool new_adapter(const AdapterParameters *parameters);
 
 bool remove_tracee(int32_t tracee_pid);
 

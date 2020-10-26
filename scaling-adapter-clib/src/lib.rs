@@ -41,23 +41,30 @@ impl IntervalDataFFI {
     }
 }
 
+#[repr(C)]
+pub struct AdapterParameters {
+    pub check_interval_ms: u64,
+    pub syscall_nrs: *const i32,
+    pub amount_syscalls: usize,
+    pub calc_interval_metrics: CalcMetricsFunFFI,
+}
+
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[no_mangle]
-pub extern "C" fn new_adapter(
-    check_interval_ms: u64,
-    syscall_nrs: *const i32,
-    amount_syscalls: usize,
-    calc_interval_metrics: CalcMetricsFunFFI,
-) -> bool {
+pub extern "C" fn new_adapter(parameters: &AdapterParameters) -> bool {
     let mut adapter_global = ADAPTER.write().unwrap();
     let mut calc_metrics_ffi_global = CALC_METRICS_FFI.write().unwrap();
-    *calc_metrics_ffi_global = Some(calc_interval_metrics);
+    *calc_metrics_ffi_global = Some(parameters.calc_interval_metrics);
 
     // create new vector from the passed C array of syscall numbers
     let syscalls_vec: Vec<i32> = unsafe {
-        let mut syscalls_vec = Vec::with_capacity(amount_syscalls);
-        syscalls_vec.set_len(amount_syscalls);
-        ptr::copy(syscall_nrs, syscalls_vec.as_mut_ptr(), amount_syscalls);
+        let mut syscalls_vec = Vec::with_capacity(parameters.amount_syscalls);
+        syscalls_vec.set_len(parameters.amount_syscalls);
+        ptr::copy(
+            parameters.syscall_nrs,
+            syscalls_vec.as_mut_ptr(),
+            parameters.amount_syscalls,
+        );
         syscalls_vec
     };
 
@@ -69,8 +76,8 @@ pub extern "C" fn new_adapter(
         derived_data
     });
 
-    let params =
-        ScalingParameters::new(syscalls_vec, calc_f).with_check_interval_ms(check_interval_ms);
+    let params = ScalingParameters::new(syscalls_vec, calc_f)
+        .with_check_interval_ms(parameters.check_interval_ms);
     *adapter_global = ScalingAdapter::new(params).ok();
     (*adapter_global).is_some()
 }
@@ -113,8 +120,8 @@ pub extern "C" fn close_adapter() {
 #[cfg(test)]
 mod tests {
     use super::*;
-        use env_logger::Env;
-use serial_test::serial;
+    use env_logger::Env;
+    use serial_test::serial;
     use std::{thread, time};
     use test_utils::{has_tracesets, spawn_sleeper};
 
@@ -155,7 +162,14 @@ use serial_test::serial;
     fn create_close() {
         assert!(has_tracesets());
         let syscalls = vec![0, 1, 2];
-        let is_created = new_adapter(1000, syscalls.as_ptr(), syscalls.len(), dummy_calc_fn);
+        let parameters = AdapterParameters {
+            check_interval_ms: 1000,
+            syscall_nrs: syscalls.as_ptr(),
+            amount_syscalls: syscalls.len(),
+            calc_interval_metrics: dummy_calc_fn,
+
+        };
+        let is_created = new_adapter(&parameters);
         assert!(is_created);
         close_adapter();
     }
@@ -174,7 +188,14 @@ use serial_test::serial;
         let wait_syscall_nr = 61;
         let syscalls = vec![wait_syscall_nr];
         // trace the nanosleep system call and set the scale_metric to the nanosleep call count
-        let is_created = new_adapter(1000, syscalls.as_ptr(), syscalls.len(), constant_calc_fn);
+        let parameters = AdapterParameters {
+            check_interval_ms: 1000,
+            syscall_nrs: syscalls.as_ptr(),
+            amount_syscalls: syscalls.len(),
+            calc_interval_metrics: constant_calc_fn,
+
+        };
+        let is_created = new_adapter(&parameters);
         assert!(is_created);
         // add sleeper process to be traced
         let is_added = add_tracee(sleeper_pid as i32);
