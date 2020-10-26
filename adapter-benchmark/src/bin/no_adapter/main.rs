@@ -22,11 +22,12 @@ fn run(input_path: &Path, output_dir: &Path, amount_items: usize, static_size: u
     }
 
     // start workers
-    for _i in 0..static_size {
+    for i in 0..static_size {
         spawn_worker(
             workqueue.clone(),
             input_path.to_path_buf(),
             output_dir.to_path_buf(),
+            i,
         );
     }
     while workqueue.size() > 0 {

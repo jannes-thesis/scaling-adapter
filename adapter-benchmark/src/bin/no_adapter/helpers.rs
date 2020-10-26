@@ -10,23 +10,22 @@ pub fn worker_function(queue: Arc<WorkQueue>, input_path: PathBuf, output_dir: P
             WorkItem::Write(i) => {
                 let _ = write_remove_garbage(input_path.as_path(), output_dir.as_path(), i);
             }
-            WorkItem::Clone => {
-                spawn_worker(queue.clone(), input_path.clone(), output_dir.clone());
-            }
-            WorkItem::Terminate => {
+            _ => {
                 break;
             }
         }
     }
 }
 
-pub fn spawn_worker(queue: Arc<WorkQueue>, input_path: PathBuf, output_dir: PathBuf) {
-    let _handle: thread::JoinHandle<()> = thread::spawn(move || {
+pub fn spawn_worker(queue: Arc<WorkQueue>, input_path: PathBuf, output_dir: PathBuf, index: usize) {
+    let name = format!("worker-{}", index);
+    let builder = thread::Builder::new().name(name.to_owned());
+    let _handle: thread::JoinHandle<()> = builder.spawn(move || {
         let worker_pid = get_pid();
         debug!("worker startup, pid: {}", worker_pid);
         // worker loop
         worker_function(queue, input_path, output_dir);
         let worker_pid = get_pid();
         debug!("worker terminating, pid: {}", worker_pid);
-    });
+    }).unwrap_or_else(|_| panic!("thread creation for worker: {} failed", name));
 }
