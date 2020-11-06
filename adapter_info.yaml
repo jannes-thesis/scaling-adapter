@@ -1,0 +1,11 @@
+description: |
+  First version of the scaling adapter.
+  Starts with pool size 1 and scales up with step size 1.
+  When no significant performance improvement (disk write throughput here) 
+  is gained it settles at last pool size.
+algorithm_parameters: 
+  -
+    description: The duration until the adapter records a new interval
+    name: check_interval_ms
+algorithm_parameter_combos:
+  - [1000]
