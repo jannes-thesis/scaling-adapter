@@ -1,8 +1,11 @@
 description: |
-  First version of the scaling adapter.
-  Starts with pool size 1 and scales up with step size 1.
-  When no significant performance improvement (disk write throughput here) 
-  is gained it settles at last pool size.
+  Second version of the scaling adapter.
+  Starts with pool size 1 and the enters Scaling state.
+  Scaling state: scaling with increasing step size (capped at 4)
+  When no significant performance improvement is gained it settles at last pool size.
+  When in Settled state enter Exploring state from time to time (both down/up).
+  If Exploring step gains performance, enter Scaling mode again.
+
 algorithm_parameters: 
   -
     description: The duration until the adapter records a new interval
