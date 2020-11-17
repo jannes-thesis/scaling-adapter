@@ -151,7 +151,7 @@ mod tests {
     use super::*;
     use env_logger::Env;
     use serial_test::serial;
-    use std::{thread, time};
+    use std::{ffi::CString, thread, time};
     use test_utils::{has_tracesets, spawn_sleeper};
 
     unsafe extern "C" fn dummy_calc_fn(_data: &IntervalDataFFI) -> IntervalDerivedData {
@@ -192,12 +192,12 @@ mod tests {
         assert!(has_tracesets());
         let syscalls = vec![0, 1, 2];
         let parameters = AdapterParameters {
-            check_interval_ms: 1000,
             syscall_nrs: syscalls.as_ptr(),
             amount_syscalls: syscalls.len(),
             calc_interval_metrics: dummy_calc_fn,
         };
-        let is_created = new_adapter(&parameters);
+        let params_str = CString::new("1000").unwrap();
+        let is_created = new_adapter(&parameters, params_str.as_c_str().as_ptr());
         assert!(is_created);
         close_adapter();
     }
@@ -217,12 +217,12 @@ mod tests {
         let syscalls = vec![wait_syscall_nr];
         // trace the nanosleep system call and set the scale_metric to the nanosleep call count
         let parameters = AdapterParameters {
-            check_interval_ms: 1000,
             syscall_nrs: syscalls.as_ptr(),
             amount_syscalls: syscalls.len(),
             calc_interval_metrics: constant_calc_fn,
         };
-        let is_created = new_adapter(&parameters);
+        let params_str = CString::new("1000").unwrap();
+        let is_created = new_adapter(&parameters, params_str.as_c_str().as_ptr());
         assert!(is_created);
         // add sleeper process to be traced
         let is_added = add_tracee(sleeper_pid as i32);
