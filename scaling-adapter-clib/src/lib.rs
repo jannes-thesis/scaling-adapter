@@ -1,4 +1,4 @@
-use std::{ptr, sync::RwLock};
+use std::{ffi::CStr, os::raw::c_char, ptr, sync::RwLock};
 
 use lazy_static::lazy_static;
 use log::debug;
@@ -43,7 +43,6 @@ impl IntervalDataFFI {
 
 #[repr(C)]
 pub struct AdapterParameters {
-    pub check_interval_ms: u64,
     pub syscall_nrs: *const i32,
     pub amount_syscalls: usize,
     pub calc_interval_metrics: CalcMetricsFunFFI,
@@ -51,23 +50,56 @@ pub struct AdapterParameters {
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[no_mangle]
-pub extern "C" fn new_adapter(parameters: &AdapterParameters) -> bool {
+/// create new adapter
+/// adapter_params: tracked syscalls and metrics calculation function
+/// algo_params: comma separated string of all algorithm parameters values (constants that tweak algo)
+/// passing by string lets benchmarks use same code for all adapter versions
+///
+/// will panic for invalid algo parameter string, or invalid syscall number array
+pub extern "C" fn new_adapter(
+    parameters: &AdapterParameters,
+    algo_params_str: *const c_char,
+) -> bool {
     let mut adapter_global = ADAPTER.write().unwrap();
+    let (syscalls_vec, calc_f) = convert_params(
+        parameters.syscall_nrs,
+        parameters.amount_syscalls,
+        parameters.calc_interval_metrics,
+    );
+
+    let algo_parameters_str =
+        unsafe { CStr::from_ptr(algo_params_str).to_str() }.expect("invalid parameters string");
+    let algo_paramters = algo_parameters_str.split(',').collect::<Vec<&str>>();
+    let check_interval_ms = algo_paramters
+        .get(0)
+        .expect("empty parameters string")
+        .parse::<u64>()
+        .expect("could not parse check interval ms");
+
+    let params =
+        ScalingParameters::new(syscalls_vec, calc_f).with_check_interval_ms(check_interval_ms);
+    *adapter_global = ScalingAdapter::new(params).ok();
+    (*adapter_global).is_some()
+}
+
+fn convert_params(
+    syscall_nrs: *const i32,
+    amount_syscalls: usize,
+    calc_metrics_func: CalcMetricsFunFFI,
+) -> (
+    Vec<i32>,
+    Box<dyn Fn(&IntervalData) -> IntervalDerivedData + Send + Sync>,
+) {
     let mut calc_metrics_ffi_global = CALC_METRICS_FFI.write().unwrap();
-    *calc_metrics_ffi_global = Some(parameters.calc_interval_metrics);
+    *calc_metrics_ffi_global = Some(calc_metrics_func);
 
     // create new vector from the passed C array of syscall numbers
     let syscalls_vec: Vec<i32> = unsafe {
-        let mut syscalls_vec = Vec::with_capacity(parameters.amount_syscalls);
-        syscalls_vec.set_len(parameters.amount_syscalls);
-        ptr::copy(
-            parameters.syscall_nrs,
-            syscalls_vec.as_mut_ptr(),
-            parameters.amount_syscalls,
-        );
+        let mut syscalls_vec = Vec::with_capacity(amount_syscalls);
+        syscalls_vec.set_len(amount_syscalls);
+        ptr::copy(syscall_nrs, syscalls_vec.as_mut_ptr(), amount_syscalls);
         syscalls_vec
     };
-
     // convert C function pointer to correct Rust closure
     let calc_f = Box::new(|interval_data: &IntervalData| -> IntervalDerivedData {
         debug!("original interval data:{:?},", interval_data);
@@ -76,10 +108,7 @@ pub extern "C" fn new_adapter(parameters: &AdapterParameters) -> bool {
         derived_data
     });
 
-    let params = ScalingParameters::new(syscalls_vec, calc_f)
-        .with_check_interval_ms(parameters.check_interval_ms);
-    *adapter_global = ScalingAdapter::new(params).ok();
-    (*adapter_global).is_some()
+    (syscalls_vec, calc_f)
 }
 
 #[no_mangle]
@@ -167,7 +196,6 @@ mod tests {
             syscall_nrs: syscalls.as_ptr(),
             amount_syscalls: syscalls.len(),
             calc_interval_metrics: dummy_calc_fn,
-
         };
         let is_created = new_adapter(&parameters);
         assert!(is_created);
@@ -193,7 +221,6 @@ mod tests {
             syscall_nrs: syscalls.as_ptr(),
             amount_syscalls: syscalls.len(),
             calc_interval_metrics: constant_calc_fn,
-
         };
         let is_created = new_adapter(&parameters);
         assert!(is_created);
