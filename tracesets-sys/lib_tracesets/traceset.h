@@ -13,6 +13,7 @@ typedef struct __traceset_data {
     __u32 amount_targets;
     __u64 read_bytes;
     __u64 write_bytes;
+    __u64 blkio_delay;
     // __u32 amount_syscalls; NOT NEEDEED
     /* struct traceset_syscall_data syscalls_data[]; */
     /*

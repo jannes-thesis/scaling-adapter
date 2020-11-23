@@ -23,6 +23,7 @@ pub struct Traceset {
 pub struct TracesetSnapshot {
     pub read_bytes: u64,
     pub write_bytes: u64,
+    pub blkio_delay: u64,
     pub syscalls_data: HashMap<i32, SyscallData>,
     pub targets: HashSet<i32>,
     pub timestamp: SystemTime,
@@ -84,12 +85,14 @@ impl Traceset {
         // without holding a lock on the shared memory
         let read_bytes = self.get_read_bytes();
         let write_bytes = self.get_write_bytes();
+        let blkio_delay = self.get_blkio_delay();
         let syscalls_data = self.get_all_syscall_data();
         let targets = self.targets.clone();
         let timestamp = SystemTime::now();
         TracesetSnapshot {
             read_bytes,
             write_bytes,
+            blkio_delay,
             syscalls_data,
             targets,
             timestamp,
@@ -102,6 +105,10 @@ impl Traceset {
 
     pub fn get_write_bytes(&self) -> u64 {
         unsafe { (*(*self._traceset).data).write_bytes as u64 }
+    }
+
+    pub fn get_blkio_delay(&self) -> u64 {
+        unsafe { (*(*self._traceset).data).blkio_delay as u64 }
     }
 
     pub fn get_syscall_data(&self, syscall: i32) -> Option<SyscallData> {
@@ -218,6 +225,7 @@ mod tests {
         thread::sleep(Duration::from_millis(1100));
         println!("read bytes: {}", traceset.get_read_bytes());
         println!("write bytes: {}", traceset.get_write_bytes());
+        println!("blkio delay: {}", traceset.get_blkio_delay());
         println!("traceset id: {}", traceset.id);
         println!("traceset targets: {:?}", &traceset.targets);
         println!("amount targets: {:?}", traceset.get_amount_targets());
