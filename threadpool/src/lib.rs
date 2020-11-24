@@ -12,17 +12,20 @@ impl Job {
     }
 }
 
+/// never call wait and destroy at the same time
 pub trait Threadpool {
     /// submit a job (function without return value)
     /// immediately returns, job is executed at some point after submission
     fn submit_job(&self, job: Job);
     /// wait until all jobs are completed
     /// do not submit any more jobs while blocking on this call
+    /// should only be called from one thread at the same time
     fn wait_completion(&self);
     /// signal all workers to stop 
     /// workers will complete their current job, then terminate
     /// returns when all workers have terminated
     /// a destroyed pool can not be reinitiated
+    /// should only be called from one thread at the same time
     fn destroy(&self);
 }
 

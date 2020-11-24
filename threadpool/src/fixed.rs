@@ -1,54 +1,64 @@
+#![allow(clippy::clippy::mutex_atomic)]
+#![allow(dead_code)]
 use std::{
-    collections::HashSet,
-    sync::{Arc, Condvar, Mutex, RwLock},
-    thread::{self},
-    time::Duration,
+    collections::{HashSet, VecDeque},
+    sync::{
+        atomic::{self, AtomicBool},
+        Arc, Condvar, Mutex,
+    },
+    thread,
 };
 
-use crossbeam::queue::SegQueue;
 use log::debug;
 
 use crate::{get_pid, Job, Threadpool};
 
-#[derive(Eq, PartialEq)]
-enum State {
-    Stopping,
-    Active,
-}
 
 pub struct FixedThreadpool {
-    job_queue: SegQueue<Job>,
+    job_queue: Mutex<VecDeque<Job>>,
     workers: Mutex<HashSet<i32>>,
     busy_workers_count: Mutex<usize>,
-    all_idle_cond: Condvar,
-    all_exit_cond: Condvar,
-    state: RwLock<State>,
+    // used to signal blocked wait handler
+    all_workers_idle_cond: Condvar,
+    // used to signal blocked destroy handler
+    all_workers_exited_cond: Condvar,
+    // used to signal blocked (on empty job_queue) workers
+    non_empty_queue_cond: Condvar,
+    is_stopping: AtomicBool,
 }
 
 impl Threadpool for FixedThreadpool {
     fn submit_job(&self, job: Job) {
-        self.job_queue.push(job);
+        let mut job_queue = self.job_queue.lock().unwrap();
+        let was_empty = job_queue.is_empty();
+        job_queue.push_back(job);
+        // in case queue was empty all workers may be blocked, wake up one
+        if was_empty {
+            self.non_empty_queue_cond.notify_one();
+        }
     }
 
     fn wait_completion(&self) {
         debug!("wait for completion");
         let mut busy_count = self.busy_workers_count.lock().unwrap();
-        while *busy_count > 0 {
-            busy_count = self.all_idle_cond.wait(busy_count).unwrap();
+        // wait until no workers are active anymore and queue is empty
+        // HOLDING 2 LOCKS HERE 1. busy count 2. job_queue
+        // safe as long as it is the only place where 2 locks are grabbed simultaneously
+        while *busy_count > 0 || !self.job_queue.lock().unwrap().is_empty() {
+            busy_count = self.all_workers_idle_cond.wait(busy_count).unwrap();
         }
     }
 
     fn destroy(&self) {
         debug!("destroy");
-        // self.wait_completion();
-        {
-            let mut state = self.state.write().unwrap();
-            *state = State::Stopping;
-        }
+        self.is_stopping.store(true, atomic::Ordering::Relaxed);
+        // workers are either a. completing last job b. blocked on empty queue
+        // wake up the blocked workers, so they can exit
+        self.non_empty_queue_cond.notify_all();
         let mut workers = self.workers.lock().unwrap();
         while workers.len() > 0 {
             debug!("some workers still active, wait on exit condition variable");
-            workers = self.all_exit_cond.wait(workers).unwrap();
+            workers = self.all_workers_exited_cond.wait(workers).unwrap();
         }
     }
 }
@@ -61,14 +71,19 @@ fn worker_loop(threadpool: Arc<FixedThreadpool>) {
         workers.insert(worker_pid);
     }
     loop {
-        let job = threadpool.job_queue.pop();
-        if job.is_none() && !threadpool.is_stopping() {
-            thread::sleep(Duration::from_millis(1000));
-            continue;
+        let mut job_queue = threadpool.job_queue.lock().unwrap();
+        let mut job = job_queue.pop_front();
+        while job.is_none() && !threadpool.is_stopping() {
+            job_queue = threadpool.non_empty_queue_cond.wait(job_queue).unwrap();
+            job = job_queue.pop_front();
         }
+        drop(job_queue);
         if threadpool.is_stopping() {
+            // signal other potentially blocked workers, so they can exit
+            threadpool.non_empty_queue_cond.notify_one();
             break;
         }
+        // if threadpool is not stopping, job option can't be none
         let job = job.unwrap();
 
         let mut busy_count = threadpool.busy_workers_count.lock().unwrap();
@@ -78,27 +93,33 @@ fn worker_loop(threadpool: Arc<FixedThreadpool>) {
 
         let mut busy_count = threadpool.busy_workers_count.lock().unwrap();
         *busy_count -= 1;
-        if !threadpool.is_stopping() && *busy_count == 0 && threadpool.job_queue.is_empty() {
-            threadpool.all_idle_cond.notify_one();
+        if !threadpool.is_stopping()
+            && *busy_count == 0
+            && threadpool.job_queue.lock().unwrap().is_empty()
+        {
+            threadpool.all_workers_idle_cond.notify_one();
         }
     }
     let mut workers = threadpool.workers.lock().unwrap();
     debug!("worker terminating, pid: {}", worker_pid);
     workers.remove(&worker_pid);
+    debug!("remaining workers that are still active: {}", workers.len());
     if workers.len() == 0 {
-        threadpool.all_exit_cond.notify_all();
+        // signal caller that is blocked in destroy handler
+        threadpool.all_workers_exited_cond.notify_one();
     }
 }
 
 impl FixedThreadpool {
     pub fn new(size: usize) -> Arc<Self> {
         let threadpool = Arc::new(FixedThreadpool {
-            job_queue: SegQueue::new(),
+            job_queue: Mutex::new(VecDeque::with_capacity(5000)),
             workers: Mutex::new(HashSet::new()),
             busy_workers_count: Mutex::new(0),
-            all_idle_cond: Condvar::new(),
-            all_exit_cond: Condvar::new(),
-            state: RwLock::new(State::Active),
+            all_workers_idle_cond: Condvar::new(),
+            all_workers_exited_cond: Condvar::new(),
+            non_empty_queue_cond: Condvar::new(),
+            is_stopping: AtomicBool::new(false),
         });
         for i in 0..size {
             let name = format!("worker-{}", i);
@@ -114,12 +135,14 @@ impl FixedThreadpool {
     }
 
     fn is_stopping(&self) -> bool {
-        *self.state.read().unwrap() == State::Stopping
+        self.is_stopping.load(atomic::Ordering::Relaxed)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use super::*;
 
     #[test]

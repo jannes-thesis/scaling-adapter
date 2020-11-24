@@ -1,11 +1,9 @@
+#![allow(clippy::clippy::mutex_atomic)]
+#![allow(dead_code)]
 use std::{
     collections::HashSet,
-    sync::{
-        atomic::AtomicUsize,
-        atomic::{self, Ordering},
-        Arc, Condvar, Mutex, RwLock,
-    },
-    thread::{self},
+    sync::{atomic, atomic::AtomicUsize, Arc, Condvar, Mutex, RwLock},
+    thread,
     time::Duration,
 };
 
@@ -110,8 +108,12 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
                 threadpool.clone().spawn_worker();
             }
             WorkItem::Terminate => {
-                debug!("terminate command: worker {}", worker_pid);
-                break;
+                let amount_workers = threadpool.workers.lock().unwrap().len();
+                // only terminate self if not the last worker
+                if amount_workers > 1 {
+                    debug!("terminate command: worker {}", worker_pid);
+                    break;
+                }
             }
         }
     }
@@ -138,17 +140,25 @@ impl AdaptiveThreadpool {
     }
 
     fn adapt_size(&self) {
-        let to_scale = self.scaling_adapter.lock().unwrap().get_scaling_advice();
+        let mut to_scale = self.scaling_adapter.lock().unwrap().get_scaling_advice();
         debug!("got scaling advice: {}", to_scale);
-        if to_scale > 0 {
-            for _ in 0..to_scale {
-                self.work_queue.push(WorkItem::Clone);
-            }
+        let current_size = self.workers.lock().unwrap().len() as i32;
+        //
+        if current_size + to_scale < 1 {
+            to_scale = -(current_size - 1);
         }
-        else if to_scale < 0 {
-            for _ in to_scale..0 {
-                self.work_queue.push(WorkItem::Terminate);
+        match to_scale.cmp(&0) {
+            std::cmp::Ordering::Greater => {
+                for _ in 0..to_scale {
+                    self.work_queue.push(WorkItem::Clone);
+                }
             }
+            std::cmp::Ordering::Less => {
+                for _ in to_scale..0 {
+                    self.work_queue.push(WorkItem::Terminate);
+                }
+            }
+            std::cmp::Ordering::Equal => {}
         }
     }
 
