@@ -170,13 +170,27 @@ impl AdaptiveThreadpool {
 
 #[cfg(test)]
 mod tests {
+    use scaling_adapter::{IntervalData, IntervalDerivedData, ScalingParameters};
+
     use super::*;
 
-    // #[test]
-    // fn create() {
-    //     let pool = AdaptiveThreadpool::new(5);
-    //     thread::sleep(Duration::from_millis(500));
-    //     assert!(pool.workers.lock().unwrap().len() == 5);
-    //     assert!(*pool.busy_workers_count.lock().unwrap() == 0);
-    // }
+    pub fn written_bytes_per_ms(interval_data: &IntervalData) -> IntervalDerivedData {
+        let duration_ms = interval_data.end_millis() - interval_data.start_millis();
+        // conversion to f64 precise for durations under 1000 years for sure
+        // conversion to f64 precise for under a petabyte of written bytes
+        let write_bytes_per_ms = (interval_data.write_bytes as f64) / (duration_ms as f64);
+        IntervalDerivedData {
+            scale_metric: write_bytes_per_ms,
+            reset_metric: write_bytes_per_ms,
+        }
+    }
+
+    #[test]
+    fn create() {
+        let adapter_params = ScalingParameters::new(vec![1, 2], Box::new(written_bytes_per_ms));
+        let adapter = ScalingAdapter::new(adapter_params).expect("adapter creation failed");
+        let pool = AdaptiveThreadpool::new(adapter);
+        pool.wait_completion();
+        pool.destroy();
+    }
 }
