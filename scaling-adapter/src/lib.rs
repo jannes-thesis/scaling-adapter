@@ -1,7 +1,8 @@
 #![allow(dead_code)]
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use errors::AdapterError;
+use AdapterState::Settled;
 // need to make import public for it to be visible in dependant library/exe
 // https://stackoverflow.com/questions/62933825/why-we-need-to-specify-all-dependenciesincluding-transitives-in-rust
 use log::debug;
@@ -220,10 +221,34 @@ impl ScalingParameters {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Direction {
+    Up,
+    Down,
+}
+
+impl Direction {
+    pub fn get_opposite(&self) -> Direction {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Down => Direction::Up,
+        }
+    }
+
+    pub fn from_step_size(step_size: i32) -> Direction {
+        if step_size >= 0 {
+            Direction::Up
+        } else {
+            Direction::Down
+        }
+    }
+}
+
 enum AdapterState {
     Startup,
-    Scaling,
-    Settled,
+    Scaling(i32),
+    Exploring(Direction),
+    Settled(SystemTime, Direction),
 }
 
 pub struct ScalingAdapter {
@@ -236,11 +261,6 @@ pub struct ScalingAdapter {
     recent_invalid_intervals: usize,
     // maximum of idle metric in current phase
     max_reset_metric: f64,
-}
-enum PhaseChange {
-    NoChange,
-    PerfDrop,
-    PerfRise,
 }
 
 // synchronize access by wrapping with Arc<Mutex<_>>
@@ -311,62 +331,83 @@ impl ScalingAdapter {
         self.metrics_history.last().get(0).copied()
     }
 
-    // TODO: take more than last datapoint into account
-    fn phase_change(&self) -> PhaseChange {
-        if let Some(latest_metrics) = self.metrics_history.get(0) {
-            if latest_metrics.derived_data.reset_metric < 0.5 * self.max_reset_metric {
-                return PhaseChange::PerfDrop;
-            }
-        }
-        PhaseChange::NoChange
-    }
-
     fn scaling_advice_startup(&mut self) -> i32 {
-        self.state = AdapterState::Scaling;
+        self.state = AdapterState::Scaling(1);
         1
     }
 
-    fn scaling_advice_settled(&mut self) -> i32 {
-        match self.phase_change() {
-            PhaseChange::NoChange => {
-                0
+    fn scaling_advice_settled(&mut self, last_direction: Direction) -> i32 {
+        match last_direction {
+            Direction::Up => {
+                debug!("{}", "Exploring DOWN");
+                self.state = AdapterState::Exploring(Direction::Down);
+                -1
             }
-            // restart scaling from 1
-            PhaseChange::PerfDrop => {
-                debug!("{}", "PHASE CHANGE: detected peformance drop");
-                self.state = AdapterState::Startup;
-                // if any worker dies before the advice is acted on, pool size could drop to 0 if not checked
-                (-(self.traceset.get_amount_targets() as i32)) + 1
-            }
-            // resume scaling from current size
-            PhaseChange::PerfRise => {
-                debug!("{}", "PHASE CHANGE: detected peformance rise");
-                self.state = AdapterState::Scaling;
+            Direction::Down => {
+                debug!("{}", "Exploring UP");
+                self.state = AdapterState::Exploring(Direction::Up);
                 1
             }
         }
     }
 
-    fn scaling_advice_scaling(&mut self) -> i32 {
+    fn scaling_advice_exploring(&mut self, direction: Direction) -> i32 {
         // compare latest interval with previous
         // metrics_history must already contain 2 entries
         let latest = self.metrics_history.get(0).unwrap();
         let previous = self.metrics_history.get(1).unwrap();
-        // scale further up
+        let step_size = match direction {
+            Direction::Up => 1,
+            Direction::Down => -1
+        };
+        // enter scaling state
         if latest.derived_data.scale_metric * self.parameters.stability_factor
             > previous.derived_data.scale_metric
         {
-            1
+            self.state = AdapterState::Scaling(step_size);
+            step_size
         // scale back to previous & enter settled state
+        // set timeout for next explore move
+        } else {
+            self.state = Settled(
+                SystemTime::now()
+                    .checked_add(Duration::from_millis(2000))
+                    .unwrap(),
+                direction,
+            );
+            step_size
+        }
+    }
+
+    fn scaling_advice_scaling(&mut self, step_size: i32) -> i32 {
+        // compare latest interval with previous
+        // metrics_history must already contain 2 entries
+        let latest = self.metrics_history.get(0).unwrap();
+        let previous = self.metrics_history.get(1).unwrap();
+        let direction = Direction::from_step_size(step_size);
+        // step sizes will always grow 1 -> 2 -> 4
+        let new_step_size = if step_size.abs() < 4 {
+            step_size + 1
+        } else {
+            step_size
+        };
+        // scale further
+        if latest.derived_data.scale_metric * self.parameters.stability_factor
+            > previous.derived_data.scale_metric
+        {
+            self.state = AdapterState::Scaling(new_step_size);
+            new_step_size
+        // scale back to previous & enter settled state
+        // set no timeout, so next action will be exploring step
         } else if previous.derived_data.scale_metric * self.parameters.stability_factor
             > latest.derived_data.scale_metric
             && self.traceset.get_amount_targets() > 1
         {
-            self.state = AdapterState::Settled;
-            -1
+            self.state = Settled(SystemTime::now(), direction);
+            -step_size
         // enter settled state
         } else {
-            self.state = AdapterState::Settled;
+            self.state = Settled(SystemTime::now(), direction);
             0
         }
     }
@@ -385,8 +426,15 @@ impl ScalingAdapter {
             }
             match self.state {
                 AdapterState::Startup => self.scaling_advice_startup(),
-                AdapterState::Scaling => self.scaling_advice_scaling(),
-                AdapterState::Settled => self.scaling_advice_settled(),
+                AdapterState::Settled(timeout, direction) => {
+                    if SystemTime::now() > timeout {
+                        self.scaling_advice_settled(direction)
+                    } else {
+                        0
+                    }
+                }
+                AdapterState::Scaling(i) => self.scaling_advice_scaling(i),
+                AdapterState::Exploring(direction) => self.scaling_advice_exploring(direction),
             }
         } else {
             0
