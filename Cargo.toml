@@ -1,2 +1,2 @@
 [workspace]
-members = ["tracesets-sys", "tracesets", "scaling-adapter", "scaling-adapter-clib", "test-utils", "adapter-benchmark"]
+members = ["tracesets-sys", "tracesets", "scaling-adapter", "scaling-adapter-clib", "test-utils", "adapter-benchmark", "threadpool"]
