@@ -1,7 +1,7 @@
 use std::{
     collections::HashSet,
     sync::{Arc, Condvar, Mutex, RwLock},
-    thread::{self, JoinHandle, ThreadId},
+    thread::{self},
     time::Duration,
 };
 

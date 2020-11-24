@@ -839,6 +839,7 @@ dependencies = [
  "env_logger",
  "libc",
  "log",
+ "scaling-adapter",
 ]
 
 [[package]]
