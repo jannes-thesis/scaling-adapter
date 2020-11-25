@@ -19,11 +19,11 @@ pub struct FixedThreadpool {
     workers: Mutex<HashSet<i32>>,
     busy_workers_count: Mutex<usize>,
     // used to signal blocked wait handler
-    all_workers_idle_cond: Condvar,
+    all_workers_idle: Condvar,
     // used to signal blocked destroy handler
-    all_workers_exited_cond: Condvar,
+    all_workers_exited: Condvar,
     // used to signal blocked (on empty job_queue) workers
-    non_empty_queue_cond: Condvar,
+    queue_non_empty: Condvar,
     is_stopping: AtomicBool,
 }
 
@@ -34,7 +34,7 @@ impl Threadpool for FixedThreadpool {
         job_queue.push_back(job);
         // in case queue was empty all workers may be blocked, wake up one
         if was_empty {
-            self.non_empty_queue_cond.notify_one();
+            self.queue_non_empty.notify_one();
         }
     }
 
@@ -45,7 +45,7 @@ impl Threadpool for FixedThreadpool {
         // HOLDING 2 LOCKS HERE 1. busy count 2. job_queue
         // safe as long as it is the only place where 2 locks are grabbed simultaneously
         while *busy_count > 0 || !self.job_queue.lock().unwrap().is_empty() {
-            busy_count = self.all_workers_idle_cond.wait(busy_count).unwrap();
+            busy_count = self.all_workers_idle.wait(busy_count).unwrap();
         }
     }
 
@@ -53,12 +53,12 @@ impl Threadpool for FixedThreadpool {
         debug!("destroy");
         self.is_stopping.store(true, atomic::Ordering::Relaxed);
         // workers are either a. completing last job b. blocked on empty queue
-        // wake up the blocked workers, so they can exit
-        self.non_empty_queue_cond.notify_all();
+        // wake up one blocked worker, so it can exit and notify others
+        self.queue_non_empty.notify_one();
         let mut workers = self.workers.lock().unwrap();
         while workers.len() > 0 {
             debug!("some workers still active, wait on exit condition variable");
-            workers = self.all_workers_exited_cond.wait(workers).unwrap();
+            workers = self.all_workers_exited.wait(workers).unwrap();
         }
     }
 }
@@ -74,13 +74,13 @@ fn worker_loop(threadpool: Arc<FixedThreadpool>) {
         let mut job_queue = threadpool.job_queue.lock().unwrap();
         let mut job = job_queue.pop_front();
         while job.is_none() && !threadpool.is_stopping() {
-            job_queue = threadpool.non_empty_queue_cond.wait(job_queue).unwrap();
+            job_queue = threadpool.queue_non_empty.wait(job_queue).unwrap();
             job = job_queue.pop_front();
         }
         drop(job_queue);
         if threadpool.is_stopping() {
             // signal other potentially blocked workers, so they can exit
-            threadpool.non_empty_queue_cond.notify_one();
+            threadpool.queue_non_empty.notify_one();
             break;
         }
         // if threadpool is not stopping, job option can't be none
@@ -97,7 +97,7 @@ fn worker_loop(threadpool: Arc<FixedThreadpool>) {
             && *busy_count == 0
             && threadpool.job_queue.lock().unwrap().is_empty()
         {
-            threadpool.all_workers_idle_cond.notify_one();
+            threadpool.all_workers_idle.notify_one();
         }
     }
     let mut workers = threadpool.workers.lock().unwrap();
@@ -106,7 +106,7 @@ fn worker_loop(threadpool: Arc<FixedThreadpool>) {
     debug!("remaining workers that are still active: {}", workers.len());
     if workers.len() == 0 {
         // signal caller that is blocked in destroy handler
-        threadpool.all_workers_exited_cond.notify_one();
+        threadpool.all_workers_exited.notify_one();
     }
 }
 
@@ -116,9 +116,9 @@ impl FixedThreadpool {
             job_queue: Mutex::new(VecDeque::with_capacity(5000)),
             workers: Mutex::new(HashSet::new()),
             busy_workers_count: Mutex::new(0),
-            all_workers_idle_cond: Condvar::new(),
-            all_workers_exited_cond: Condvar::new(),
-            non_empty_queue_cond: Condvar::new(),
+            all_workers_idle: Condvar::new(),
+            all_workers_exited: Condvar::new(),
+            queue_non_empty: Condvar::new(),
             is_stopping: AtomicBool::new(false),
         });
         for i in 0..size {

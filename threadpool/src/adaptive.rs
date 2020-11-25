@@ -1,13 +1,12 @@
 #![allow(clippy::clippy::mutex_atomic)]
 #![allow(dead_code)]
 use std::{
-    collections::HashSet,
-    sync::{atomic, atomic::AtomicUsize, Arc, Condvar, Mutex, RwLock},
+    collections::{HashSet, VecDeque},
+    sync::{atomic, atomic::AtomicBool, atomic::AtomicUsize, Arc, Condvar, Mutex},
     thread,
     time::Duration,
 };
 
-use crossbeam::queue::SegQueue;
 use log::debug;
 use scaling_adapter::ScalingAdapter;
 
@@ -19,47 +18,61 @@ enum State {
     Active,
 }
 
-enum WorkItem {
-    Execute(Job),
+#[derive(Copy, Clone)]
+enum ScaleCommand {
     Terminate,
     Clone,
 }
 
+enum WorkItem {
+    Execute(Job),
+    ScaleCommand(ScaleCommand),
+}
+
 pub struct AdaptiveThreadpool {
-    work_queue: SegQueue<WorkItem>,
+    work_queue: Mutex<VecDeque<WorkItem>>,
     workers: Mutex<HashSet<i32>>,
     busy_workers_count: Mutex<usize>,
-    all_idle_cond: Condvar,
-    all_exit_cond: Condvar,
-    state: RwLock<State>,
+    // used to signal blocked wait handler
+    all_workers_idle: Condvar,
+    // used to signal blocked destroy handler
+    all_workers_exited: Condvar,
+    // used to signal blocked (on empty work_queue) workers
+    work_queue_non_empty: Condvar,
+    is_stopping: AtomicBool,
     scaling_adapter: Mutex<ScalingAdapter>,
     next_worker_id: AtomicUsize,
 }
 
 impl Threadpool for AdaptiveThreadpool {
     fn submit_job(&self, job: Job) {
-        self.work_queue.push(WorkItem::Execute(job));
+        let mut work_queue = self.work_queue.lock().unwrap();
+        let was_empty = work_queue.is_empty();
+        work_queue.push_back(WorkItem::Execute(job));
+        // in case queue was empty, all workers may be blocked, wake up one
+        if was_empty {
+            self.work_queue_non_empty.notify_one();
+        }
     }
 
     fn wait_completion(&self) {
         debug!("wait for completion");
         let mut busy_count = self.busy_workers_count.lock().unwrap();
         while *busy_count > 0 {
-            busy_count = self.all_idle_cond.wait(busy_count).unwrap();
+            busy_count = self.all_workers_idle.wait(busy_count).unwrap();
         }
     }
 
     fn destroy(&self) {
         debug!("destroy");
-        // self.wait_completion();
-        {
-            let mut state = self.state.write().unwrap();
-            *state = State::Stopping;
-        }
+        self.is_stopping.store(true, atomic::Ordering::Relaxed);
+        // workers are either a. completing last job b. blocked on empty queue
+        // wake up one blocked worker, so it can exit and notify others
+        self.work_queue_non_empty.notify_one();
         let mut workers = self.workers.lock().unwrap();
         while workers.len() > 0 {
             debug!("some workers still active, wait on exit condition variable");
-            workers = self.all_exit_cond.wait(workers).unwrap();
+            workers = self.all_workers_exited.wait(workers).unwrap();
         }
     }
 }
@@ -78,12 +91,23 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
         }
     }
     loop {
-        let work_item = threadpool.work_queue.pop();
         threadpool.adapt_size();
-        if work_item.is_none() && !threadpool.is_stopping() {
-            thread::sleep(Duration::from_millis(1000));
-            threadpool.adapt_size();
-            continue;
+        // lock queue, get item, unlock queue
+        let mut work_item = threadpool.work_queue.lock().unwrap().pop_front();
+        while work_item.is_none() && !threadpool.is_stopping() {
+            // relock queue
+            let work_queue_guard = threadpool.work_queue.lock().unwrap();
+            // release queue and block on signal, reaquire on return
+            let (mut work_queue_reaquired, wait_result) = threadpool
+                .work_queue_non_empty
+                .wait_timeout(work_queue_guard, Duration::from_millis(1000))
+                .unwrap();
+            // get next work item and release queue
+            work_item = work_queue_reaquired.pop_front();
+            drop(work_queue_reaquired);
+            if wait_result.timed_out() {
+                threadpool.adapt_size();
+            }
         }
         if threadpool.is_stopping() {
             break;
@@ -98,16 +122,18 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
 
                 let mut busy_count = threadpool.busy_workers_count.lock().unwrap();
                 *busy_count -= 1;
-                if !threadpool.is_stopping() && *busy_count == 0 && threadpool.work_queue.is_empty()
+                if !threadpool.is_stopping()
+                    && *busy_count == 0
+                    && threadpool.work_queue.lock().unwrap().is_empty()
                 {
-                    threadpool.all_idle_cond.notify_one();
+                    threadpool.all_workers_idle.notify_one();
                 }
             }
-            WorkItem::Clone => {
+            WorkItem::ScaleCommand(ScaleCommand::Clone) => {
                 debug!("clone command: spawning new worker");
                 threadpool.clone().spawn_worker();
             }
-            WorkItem::Terminate => {
+            WorkItem::ScaleCommand(ScaleCommand::Terminate) => {
                 let amount_workers = threadpool.workers.lock().unwrap().len();
                 // only terminate self if not the last worker
                 if amount_workers > 1 {
@@ -121,19 +147,20 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
     debug!("worker terminating, pid: {}", worker_pid);
     workers.remove(&worker_pid);
     if workers.len() == 0 {
-        threadpool.all_exit_cond.notify_all();
+        threadpool.all_workers_exited.notify_all();
     }
 }
 
 impl AdaptiveThreadpool {
     pub fn new(scaling_adapter: ScalingAdapter) -> Arc<Self> {
         Arc::new(AdaptiveThreadpool {
-            work_queue: SegQueue::new(),
+            work_queue: Mutex::new(VecDeque::new()),
             workers: Mutex::new(HashSet::new()),
             busy_workers_count: Mutex::new(0),
-            all_idle_cond: Condvar::new(),
-            all_exit_cond: Condvar::new(),
-            state: RwLock::new(State::Active),
+            all_workers_idle: Condvar::new(),
+            all_workers_exited: Condvar::new(),
+            work_queue_non_empty: Condvar::new(),
+            is_stopping: AtomicBool::new(false),
             scaling_adapter: Mutex::new(scaling_adapter),
             next_worker_id: AtomicUsize::new(0),
         })
@@ -147,18 +174,19 @@ impl AdaptiveThreadpool {
         if current_size + to_scale < 1 {
             to_scale = -(current_size - 1);
         }
-        match to_scale.cmp(&0) {
-            std::cmp::Ordering::Greater => {
-                for _ in 0..to_scale {
-                    self.work_queue.push(WorkItem::Clone);
-                }
+        let (scale_command, n) = match to_scale.cmp(&0) {
+            std::cmp::Ordering::Greater => (ScaleCommand::Clone, to_scale),
+            std::cmp::Ordering::Less => (ScaleCommand::Terminate, -to_scale),
+            std::cmp::Ordering::Equal => {
+                // scale_command is garbage here
+                (ScaleCommand::Clone, 0)
             }
-            std::cmp::Ordering::Less => {
-                for _ in to_scale..0 {
-                    self.work_queue.push(WorkItem::Terminate);
-                }
+        };
+        if n > 0 {
+            let mut work_queue = self.work_queue.lock().unwrap();
+            for _ in 0..n {
+                work_queue.push_front(WorkItem::ScaleCommand(scale_command));
             }
-            std::cmp::Ordering::Equal => {}
         }
     }
 
@@ -174,7 +202,7 @@ impl AdaptiveThreadpool {
     }
 
     fn is_stopping(&self) -> bool {
-        *self.state.read().unwrap() == State::Stopping
+        self.is_stopping.load(atomic::Ordering::Relaxed)
     }
 }
 

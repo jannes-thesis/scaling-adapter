@@ -1,9 +1,9 @@
+mod adaptive;
 mod fixed;
 mod watermark;
-mod adaptive;
 
 pub struct Job {
-    function: Box<dyn Fn() + Sync + Send>
+    function: Box<dyn Fn() + Sync + Send>,
 }
 
 impl Job {
@@ -21,7 +21,7 @@ pub trait Threadpool {
     /// do not submit any more jobs while blocking on this call
     /// should only be called from one thread at the same time
     fn wait_completion(&self);
-    /// signal all workers to stop 
+    /// signal all workers to stop
     /// workers will complete their current job, then terminate
     /// returns when all workers have terminated
     /// a destroyed pool can not be reinitiated
@@ -35,9 +35,16 @@ pub fn get_pid() -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::{Arc, Once}, thread, time::Duration};
+    use std::{
+        sync::{Arc, Once},
+        thread,
+        time::Duration,
+    };
 
+    use adaptive::AdaptiveThreadpool;
     use env_logger::Env;
+    use log::debug;
+    use scaling_adapter::{IntervalDerivedData, ScalingAdapter, ScalingParameters};
 
     use crate::fixed::FixedThreadpool;
 
@@ -48,7 +55,7 @@ mod tests {
     /// Setup function that is only run once, even if called multiple times.
     fn setup() {
         INIT.call_once(|| {
-            let env = Env::default().filter_or("MY_LOG_LEVEL", "debug");
+            let env = Env::default().filter_or("MY_LOG_LEVEL", "info");
             env_logger::init_from_env(env);
         });
     }
@@ -65,6 +72,31 @@ mod tests {
         setup();
         let fixed_pool = FixedThreadpool::new(5);
         print_jobs(fixed_pool);
+    }
+
+    #[test]
+    fn adaptive_create_wait_destroy() {
+        setup();
+        let adaptive_pool = AdaptiveThreadpool::new(get_dummy_adapter());
+        wait_destroy(adaptive_pool);
+    }
+
+    #[test]
+    fn adaptive_print_jobs() {
+        setup();
+        let adaptive_pool = AdaptiveThreadpool::new(get_dummy_adapter());
+        print_jobs(adaptive_pool);
+    }
+
+    fn get_dummy_adapter() -> ScalingAdapter {
+        let adapter_params = ScalingParameters::new(
+            vec![1, 2],
+            Box::new(|_| IntervalDerivedData {
+                scale_metric: 0.0,
+                reset_metric: 0.0,
+            }),
+        );
+        ScalingAdapter::new(adapter_params).expect("adapter creation failed")
     }
 
     fn print_jobs(threadpool: Arc<dyn Threadpool>) {
@@ -87,9 +119,8 @@ mod tests {
 
     fn print_ix10(i: i32) {
         for j in 0..10 {
-            println!("iteration {} of index {}", j, i);
+            debug!("iteration {} of index {}", j, i);
             thread::sleep(Duration::from_millis(100));
         }
     }
-
 }
