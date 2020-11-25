@@ -209,6 +209,25 @@ impl ScalingParameters {
         }
     }
 
+    /// take params separated as string "<param1>,<param2>"
+    /// same order as in struct
+    pub fn with_algo_params(mut self, params_untyped: &str) -> Self {
+        let param_strs = params_untyped.split(',').collect::<Vec<&str>>();
+        let check_interval_ms: u64 = param_strs
+            .get(0)
+            .expect("malformatted params string")
+            .parse()
+            .expect("invalid check interval ms parameter");
+        let stability_factor: f64 = param_strs
+            .get(1)
+            .expect("malformatted params string")
+            .parse()
+            .expect("invalid stability factor parameter");
+        self.check_interval_ms = check_interval_ms;
+        self.stability_factor = stability_factor;
+        self
+    }
+
     pub fn with_check_interval_ms(mut self, check_interval_ms: u64) -> Self {
         self.check_interval_ms = check_interval_ms;
         self
@@ -358,7 +377,7 @@ impl ScalingAdapter {
         let previous = self.metrics_history.get(1).unwrap();
         let step_size = match direction {
             Direction::Up => 1,
-            Direction::Down => -1
+            Direction::Down => -1,
         };
         // enter scaling state
         if latest.derived_data.scale_metric * self.parameters.stability_factor
