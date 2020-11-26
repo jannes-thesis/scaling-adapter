@@ -1,9 +1,9 @@
-mod adaptive;
-mod fixed;
-mod watermark;
+pub mod adaptive;
+pub mod fixed;
+pub mod watermark;
 
 pub struct Job {
-    function: Box<dyn Fn() + Sync + Send>,
+    pub function: Box<dyn Fn() + Send>,
 }
 
 impl Job {

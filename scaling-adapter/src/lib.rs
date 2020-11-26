@@ -194,6 +194,12 @@ pub struct ScalingParameters {
     pub stability_factor: f64,
 }
 
+impl Default for ScalingParameters {
+    fn default() -> Self {
+        todo!()
+    }
+}
+
 impl ScalingParameters {
     pub fn new(
         syscall_nrs: Vec<i32>,

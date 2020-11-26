@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 clap = "3.0.0-beta.2"
 scaling-adapter = { path = "../scaling-adapter" }
+threadpool = { path = "../threadpool" }
 log = "0.4.11"
 env_logger = "0.7.1"
 libc = "0.2.79"
