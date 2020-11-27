@@ -46,7 +46,7 @@ mod tests {
     use log::debug;
     use scaling_adapter::{IntervalDerivedData, ScalingAdapter, ScalingParameters};
 
-    use crate::fixed::FixedThreadpool;
+    use crate::{fixed::FixedThreadpool, watermark::WatermarkThreadpool};
 
     use super::*;
 
@@ -86,6 +86,20 @@ mod tests {
         setup();
         let adaptive_pool = AdaptiveThreadpool::new(get_dummy_adapter());
         print_jobs(adaptive_pool);
+    }
+
+    #[test]
+    fn watermark_create_wait_destroy() {
+        setup();
+        let watermark_pool = WatermarkThreadpool::new(1, 10, Duration::from_secs(10));
+        wait_destroy(watermark_pool);
+    }
+
+    #[test]
+    fn watermark_print_jobs() {
+        setup();
+        let watermark_pool = WatermarkThreadpool::new(1, 10, Duration::from_secs(10));
+        print_jobs(watermark_pool);
     }
 
     fn get_dummy_adapter() -> ScalingAdapter {
