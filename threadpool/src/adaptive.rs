@@ -110,6 +110,7 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
             }
         }
         if threadpool.is_stopping() {
+            threadpool.workers.lock().unwrap().remove(&worker_pid);
             break;
         }
         let work_item = work_item.unwrap();
@@ -134,19 +135,19 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
                 threadpool.clone().spawn_worker();
             }
             WorkItem::ScaleCommand(ScaleCommand::Terminate) => {
-                let amount_workers = threadpool.workers.lock().unwrap().len();
+                let mut workers = threadpool.workers.lock().unwrap();
+                let amount_workers = workers.len();
                 // only terminate self if not the last worker
                 if amount_workers > 1 {
                     debug!("terminate command: worker {}", worker_pid);
+                    workers.remove(&worker_pid);
                     break;
                 }
             }
         }
     }
-    let mut workers = threadpool.workers.lock().unwrap();
     debug!("worker terminating, pid: {}", worker_pid);
-    workers.remove(&worker_pid);
-    if workers.len() == 0 {
+    if threadpool.workers.lock().unwrap().len() == 0 {
         threadpool.all_workers_exited.notify_all();
     }
 }
