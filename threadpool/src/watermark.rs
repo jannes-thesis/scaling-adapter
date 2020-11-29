@@ -179,6 +179,14 @@ impl WatermarkThreadpool {
         threadpool
     }
 
+    pub fn new_untyped(params: &str) -> Arc<Self> {
+        let param_list: Vec<&str> = params.split(',').collect();
+        let min_size: usize = param_list.get(0).unwrap().parse().expect("invalid min_size arg");
+        let max_size: usize = param_list.get(1).unwrap().parse().expect("invalid max_size arg");
+        let idle_threshold_millis: u64 = param_list.get(2).unwrap().parse().expect("invalid idle threshold");
+        WatermarkThreadpool::new(min_size, max_size, Duration::from_millis(idle_threshold_millis))
+    }
+
     fn spawn_worker(self: Arc<Self>) {
         let worker_id = self.next_worker_id.fetch_add(1, atomic::Ordering::Relaxed);
         let name = format!("worker-{}", worker_id);

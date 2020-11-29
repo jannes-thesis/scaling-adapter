@@ -1,11 +1,12 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::{Duration, Instant}};
 
+use chrono::DurationRound;
 use clap::{App, Arg};
 
 use jobs::{read_write_4kb_sync, JobFunction};
 use loads::every10ms;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use threadpool::{adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, Threadpool};
+use threadpool::{Threadpool, adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, watermark::WatermarkThreadpool};
 
 mod jobs;
 mod loads;
@@ -70,7 +71,7 @@ fn main() {
             FixedThreadpool::new(pool_size)
         }
         "watermark" => {
-            unimplemented!();
+            WatermarkThreadpool::new_untyped(pool_params)
         }
         _ => {
             panic!("invalid pool_type parameter");
@@ -91,7 +92,7 @@ fn main() {
     match load_type {
         "every10ms" => {
             every10ms(
-                thread_pool,
+                thread_pool.clone(),
                 worker_function,
                 Arc::new(output_dir),
                 num_jobs,
@@ -101,4 +102,10 @@ fn main() {
             panic!("invalid load function parameter");
         }
     }
+    let start = Instant::now();
+    println!("submitted all jobs, waiting for completion");
+    thread_pool.wait_completion();
+    let wait_time = Instant::now().duration_since(start);
+    println!("all jobs completed, waited for {} seconds, destroying pool", wait_time.as_secs_f32());
+    thread_pool.destroy();
 }

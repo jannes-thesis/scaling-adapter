@@ -10,6 +10,25 @@ pub fn every10ms(
     out_dir: Arc<PathBuf>,
     num_items: usize,
 ) {
+    everyXms(threadpool, job_function, out_dir, num_items, 10)
+}
+
+pub fn every100ms(
+    threadpool: Arc<dyn Threadpool>,
+    job_function: Arc<JobFunction>,
+    out_dir: Arc<PathBuf>,
+    num_items: usize,
+) {
+    everyXms(threadpool, job_function, out_dir, num_items, 10)
+}
+
+pub fn everyXms(
+    threadpool: Arc<dyn Threadpool>,
+    job_function: Arc<JobFunction>,
+    out_dir: Arc<PathBuf>,
+    num_items: usize,
+    interval_ms: u64,
+) {
     for i in 0..num_items {
         let path = out_dir.clone();
         let f = job_function.clone();
@@ -20,6 +39,6 @@ pub fn every10ms(
             }),
         };
         threadpool.submit_job(job);
-        thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(interval_ms));
     }
 }
