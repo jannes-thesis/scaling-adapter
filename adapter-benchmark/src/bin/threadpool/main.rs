@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc, time::Instant};
 use clap::{App, Arg};
 
 use jobs::{JobFunction, read_write_4kb_sync, read_write_4mb_sync, read_write_buf_sync_1mb};
-use loads::{every100ms, every10ms, every1ms, every1s};
+use loads::{every100ms, every100us, every10ms, every1ms, every1s, every200ms};
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
 use threadpool::{
     adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, watermark::WatermarkThreadpool,
@@ -91,9 +91,11 @@ fn main() {
         }
     };
     let load_function = match load_type {
+        "every100us" => every100us,
         "every1ms" => every1ms,
         "every10ms" => every10ms,
         "every100ms" => every100ms,
+        "every200ms" => every200ms,
         "every1s" => every1s,
         _ => {
             panic!("invalid load function parameter");

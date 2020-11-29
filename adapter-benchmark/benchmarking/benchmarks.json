@@ -1,12 +1,44 @@
 {
     "test": {
-        "workload_name": "every10ms",
+        "workload_name": "every1ms",
+        "worker_function": "read_write_4kb_sync",
+        "amount_files": 10000,
+        "worker_threads": [ 1, 2 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/4kb"
+    },
+    "test2": {
+        "workload_name": "every1ms",
         "worker_function": "read_write_buf_sync_1mb",
-        "amount_files": 50,
-        "worker_threads": [
-            1,
-            2
-        ],
+        "amount_files": 100,
+        "worker_threads": [ 1, 2 ],
         "files_dir": "/ssd2/adapter-benchmark/files/1mb"
+    },
+    "rw_buf_1mb_100ms": {
+        "workload_name": "every100ms",
+        "worker_function": "read_write_buf_sync_1mb",
+        "amount_files": 500,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/1mb"
+    },
+    "rw_buf_1mb_200ms": {
+        "workload_name": "every200ms",
+        "worker_function": "read_write_buf_sync_1mb",
+        "amount_files": 500,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/1mb"
+    },
+    "rw_4kb_100us": {
+        "workload_name": "every100us",
+        "worker_function": "read_write_4kb_sync",
+        "amount_files": 100000,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/4kb"
+    },
+    "rw_4kb_1ms": {
+        "workload_name": "every1ms",
+        "worker_function": "read_write_4kb_sync",
+        "amount_files": 100000,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/4kb"
     }
 }

@@ -5,13 +5,22 @@ use threadpool::{Job, Threadpool};
 
 use crate::jobs::JobFunction;
 
+pub fn every100us(
+    threadpool: Arc<dyn Threadpool>,
+    job_function: Arc<JobFunction>,
+    out_dir: Arc<PathBuf>,
+    num_items: usize,
+) {
+    every_X_micros(threadpool, job_function, out_dir, num_items, 100)
+}
+
 pub fn every1ms(
     threadpool: Arc<dyn Threadpool>,
     job_function: Arc<JobFunction>,
     out_dir: Arc<PathBuf>,
     num_items: usize,
 ) {
-    everyXms(threadpool, job_function, out_dir, num_items, 1)
+    every_X_millis(threadpool, job_function, out_dir, num_items, 1)
 }
 
 pub fn every10ms(
@@ -20,7 +29,7 @@ pub fn every10ms(
     out_dir: Arc<PathBuf>,
     num_items: usize,
 ) {
-    everyXms(threadpool, job_function, out_dir, num_items, 10)
+    every_X_millis(threadpool, job_function, out_dir, num_items, 10)
 }
 
 pub fn every100ms(
@@ -29,7 +38,16 @@ pub fn every100ms(
     out_dir: Arc<PathBuf>,
     num_items: usize,
 ) {
-    everyXms(threadpool, job_function, out_dir, num_items, 100)
+    every_X_millis(threadpool, job_function, out_dir, num_items, 100)
+}
+
+pub fn every200ms(
+    threadpool: Arc<dyn Threadpool>,
+    job_function: Arc<JobFunction>,
+    out_dir: Arc<PathBuf>,
+    num_items: usize,
+) {
+    every_X_millis(threadpool, job_function, out_dir, num_items, 200)
 }
 
 pub fn every1s(
@@ -38,15 +56,25 @@ pub fn every1s(
     out_dir: Arc<PathBuf>,
     num_items: usize,
 ) {
-    everyXms(threadpool, job_function, out_dir, num_items, 1000)
+    every_X_millis(threadpool, job_function, out_dir, num_items, 1000)
 }
 
-pub fn everyXms(
+pub fn every_X_millis(
     threadpool: Arc<dyn Threadpool>,
     job_function: Arc<JobFunction>,
     out_dir: Arc<PathBuf>,
     num_items: usize,
-    interval_ms: u64,
+    interval_millis: u64,
+) {
+    every_X_micros(threadpool, job_function, out_dir, num_items, interval_millis * 1000);
+}
+
+pub fn every_X_micros(
+    threadpool: Arc<dyn Threadpool>,
+    job_function: Arc<JobFunction>,
+    out_dir: Arc<PathBuf>,
+    num_items: usize,
+    interval_micros: u64,
 ) {
     for i in 0..num_items {
         let path = out_dir.clone();
@@ -58,6 +86,6 @@ pub fn everyXms(
             }),
         };
         threadpool.submit_job(job);
-        thread::sleep(Duration::from_millis(interval_ms));
+        thread::sleep(Duration::from_micros(interval_micros));
     }
 }
