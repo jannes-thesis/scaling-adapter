@@ -1,12 +1,14 @@
-use std::{path::PathBuf, sync::Arc, time::{Duration, Instant}};
+use std::{path::PathBuf, sync::Arc, time::Instant};
 
-use chrono::DurationRound;
 use clap::{App, Arg};
 
-use jobs::{read_write_4kb_sync, JobFunction};
-use loads::every10ms;
+use jobs::{JobFunction, read_write_4kb_sync, read_write_4mb_sync, read_write_buf_sync_1mb};
+use loads::{every100ms, every10ms, every1ms, every1s};
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use threadpool::{Threadpool, adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, watermark::WatermarkThreadpool};
+use threadpool::{
+    adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, watermark::WatermarkThreadpool,
+    Threadpool,
+};
 
 mod jobs;
 mod loads;
@@ -70,9 +72,7 @@ fn main() {
             let pool_size: usize = pool_params.parse().expect("invalid pool size");
             FixedThreadpool::new(pool_size)
         }
-        "watermark" => {
-            WatermarkThreadpool::new_untyped(pool_params)
-        }
+        "watermark" => WatermarkThreadpool::new_untyped(pool_params),
         _ => {
             panic!("invalid pool_type parameter");
         }
@@ -84,28 +84,35 @@ fn main() {
     }
     let worker_function: Arc<JobFunction> = match worker_function {
         "read_write_4kb_sync" => Arc::new(read_write_4kb_sync),
+        "read_write_4mb_sync" => Arc::new(read_write_4mb_sync),
+        "read_write_buf_sync_1mb" => Arc::new(read_write_buf_sync_1mb),
         _ => {
             panic!("invalid worker function argument");
         }
     };
-    println!("starting benchmark");
-    match load_type {
-        "every10ms" => {
-            every10ms(
-                thread_pool.clone(),
-                worker_function,
-                Arc::new(output_dir),
-                num_jobs,
-            );
-        }
+    let load_function = match load_type {
+        "every1ms" => every1ms,
+        "every10ms" => every10ms,
+        "every100ms" => every100ms,
+        "every1s" => every1s,
         _ => {
             panic!("invalid load function parameter");
         }
-    }
+    };
+    println!("starting benchmark");
+    load_function(
+        thread_pool.clone(),
+        worker_function,
+        Arc::new(output_dir),
+        num_jobs,
+    );
     let start = Instant::now();
     println!("submitted all jobs, waiting for completion");
     thread_pool.wait_completion();
     let wait_time = Instant::now().duration_since(start);
-    println!("all jobs completed, waited for {} seconds, destroying pool", wait_time.as_secs_f32());
+    println!(
+        "all jobs completed, waited for {} seconds, destroying pool",
+        wait_time.as_secs_f32()
+    );
     thread_pool.destroy();
 }

@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use std::fs::File;
 use std::{
     fs,
@@ -16,13 +17,12 @@ pub fn read_write_4mb_sync(file_dir: Arc<PathBuf>, index: usize) {
     read_write_Xkb_sync(file_dir, index, 4000);
 }
 
+pub fn read_write_buf_sync_1mb(file_dir: Arc<PathBuf>, index: usize) {
+    read_write_buf_sync_Xkb(file_dir, index, 1000);
+}
+
 pub fn read_write_Xkb_sync(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u64) {
-    let input_filename = if file_size_kb >= 1000 {
-        let file_size_mb = file_size_kb / 1000;
-        format!("{}mb-{}.txt", file_size_mb, index)
-    } else {
-        format!("{}kb-{}.txt", file_size_kb, index)
-    };
+    let input_filename = format_input_filename(file_size_kb, index);
     let output_filename = format!("wout-{}.txt", index);
     let input =
         fs::read_to_string(file_dir.join(input_filename)).expect("error reading file to string");
@@ -37,8 +37,8 @@ pub fn read_write_Xkb_sync(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u
     fs::remove_file(output_filepath).expect("error removing wout file");
 }
 
-pub fn read_write_buf_10mb_sync(file_dir: Arc<PathBuf>, index: usize) {
-    let input_filename = format!("10mb-{}.txt", index);
+pub fn read_write_buf_sync_Xkb(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u64) {
+    let input_filename = format_input_filename(file_size_kb, index);
     let output_filename = format!("wout-{}.txt", index);
     let mut input_file = File::open(file_dir.join(input_filename)).expect("unexpected file error");
     let mut output_file =
@@ -63,5 +63,14 @@ pub fn read_write_buf_10mb_sync(file_dir: Arc<PathBuf>, index: usize) {
             .write_all(read_slice)
             .expect("error writing to file");
         output_file.sync_all().expect("error fsyncing file");
+    }
+}
+
+fn format_input_filename(file_size_kb: u64, index: usize) -> String {
+    if file_size_kb >= 1000 {
+        let file_size_mb = file_size_kb / 1000;
+        format!("{}mb-{}.txt", file_size_mb, index)
+    } else {
+        format!("{}kb-{}.txt", file_size_kb, index)
     }
 }

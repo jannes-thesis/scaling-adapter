@@ -1,0 +1,12 @@
+{
+    "test": {
+        "workload_name": "every10ms",
+        "worker_function": "read_write_buf_sync_1mb",
+        "amount_files": 50,
+        "worker_threads": [
+            1,
+            2
+        ],
+        "files_dir": "/ssd2/adapter-benchmark/files/1mb"
+    }
+}
