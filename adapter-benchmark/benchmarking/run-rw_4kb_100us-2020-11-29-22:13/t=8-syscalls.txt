@@ -1,0 +1,13 @@
+targets: 2025,2026,2027,2028,2029,2030,2031,2032
+                  SYSCALL      TIME IN MS      COUNT
+                    fsync          195293      90725
+                     read           60061     181445
+                   unlink           27553      90729
+                   openat           21926     181444
+                    write            3287      90724
+                    statx             748      90722
+                    close             657     181452
+                    futex              14       1265
+                  madvise               0          8
+                   munmap               0          8
+------------
