@@ -13,6 +13,10 @@ pub fn read_write_4kb_sync(file_dir: Arc<PathBuf>, index: usize) {
     read_write_Xkb_sync(file_dir, index, 4);
 }
 
+pub fn read_write_100kb_sync (file_dir: Arc<PathBuf>, index: usize) {
+    read_write_Xkb_sync(file_dir, index, 100);
+}
+
 pub fn read_write_4mb_sync(file_dir: Arc<PathBuf>, index: usize) {
     read_write_Xkb_sync(file_dir, index, 4000);
 }

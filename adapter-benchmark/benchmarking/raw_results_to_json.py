@@ -20,7 +20,7 @@ def convert_pidstat(lines):
     """
     return aggregated bytes read/written
     """
-    worker_lines = lines[2:]
+    worker_lines = lines[3:]
     lines_fields = [convert_pidstat_line(line) for line in worker_lines]
     agg_read = sum([fields[0] for fields in lines_fields])
     agg_write = sum([fields[1] for fields in lines_fields])
@@ -62,8 +62,6 @@ if __name__ == '__main__':
     if len(sys.argv) != 4:
         print('usage: ./raw_results_to_json.py [combined result dir] [number reps] [benchmark_name]')
         exit(1)
-
-    print('currently expects pidstat output without the header, describing field names')
 
     result_base = sys.argv[1]
     n = int(sys.argv[2])
