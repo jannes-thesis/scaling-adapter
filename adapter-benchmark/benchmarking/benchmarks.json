@@ -13,6 +13,14 @@
         "worker_threads": [ 1, 2 ],
         "files_dir": "/ssd2/adapter-benchmark/files/1mb"
     },
+    "test3": {
+        "workload_name": "every100us",
+        "worker_function": "read_write_4kb_sync",
+        "amount_files": 1000,
+        "worker_threads": [ 1 ],
+        "files_dir": "/home/jannes/bench_files",
+        "bg_load_command": "../../target/release/disk_writer ../out/100kb.txt . 100"
+    },
     "rw_buf_1mb_100ms": {
         "workload_name": "every100ms",
         "worker_function": "read_write_buf_sync_1mb",
@@ -40,5 +48,21 @@
         "amount_files": 100000,
         "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
         "files_dir": "/ssd2/adapter-benchmark/files/4kb"
+    },
+    "rw_buf_1mb_100ms-bg_load": {
+        "workload_name": "every100ms",
+        "worker_function": "read_write_buf_sync_1mb",
+        "amount_files": 500,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/1mb",
+        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 5"
+    },
+    "rw_4kb_100us-bg_load": {
+        "workload_name": "every100us",
+        "worker_function": "read_write_4kb_sync",
+        "amount_files": 100000,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/4kb",
+        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 5"
     }
 }

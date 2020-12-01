@@ -32,10 +32,21 @@ fn main() {
                 .value_name("OUTPUT_DIR")
                 .about("path to directory where temp files are created/deleted"),
         )
+        .arg(
+            Arg::new("sleep_ms")
+                .required(true)
+                .value_name("SLEEP_INTERVAL_MS")
+                .about("how many ms to sleep between reps"),
+        )
         .get_matches();
 
     let output_dir = matches.value_of("output_dir").unwrap();
     let input_path = matches.value_of("input_file").unwrap();
+    let sleep_ms: u64 = matches
+        .value_of("sleep_ms")
+        .unwrap()
+        .parse()
+        .expect("invalid sleep interval");
 
     let input_path = Path::new(input_path);
     let output_dir = Path::new(output_dir);
@@ -53,6 +64,6 @@ fn main() {
     while let Err(TryRecvError::Empty) = receiver.try_recv() {
         let output_path = output_dir.join("tmp.txt");
         write_remove(&garbage, &output_path).expect("error writing/removing garbage file");
-        thread::sleep(Duration::from_millis(5));
+        thread::sleep(Duration::from_millis(sleep_ms));
     }
 }
