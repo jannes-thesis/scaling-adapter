@@ -1,0 +1,13 @@
+targets: 32235,32236,32237,32238,32239,32240,32241,32242
+                  SYSCALL      TIME IN MS      COUNT
+                    fsync          203348      91561
+                     read           61852     183119
+                   unlink           28532      91566
+                   openat           23073     183119
+                    write            3348      91561
+                    statx             730      91559
+                    close             626     183125
+                    futex              18       1196
+                  madvise               0          7
+                   munmap               0          8
+------------

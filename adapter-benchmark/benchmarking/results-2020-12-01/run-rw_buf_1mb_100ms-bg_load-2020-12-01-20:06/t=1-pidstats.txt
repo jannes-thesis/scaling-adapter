@@ -1,0 +1,4 @@
+tracing threads: 654
+bytes_read, bytes_write, blkio_delays, non-vol ctx switch, vol ctx switc
+526589952 522543104 1 518 21
+525197312 522543104 566 256098 1352
