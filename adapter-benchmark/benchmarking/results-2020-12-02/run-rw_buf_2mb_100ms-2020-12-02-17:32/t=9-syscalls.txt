@@ -1,0 +1,12 @@
+targets: 8886,8887,8888,8889,8890,8891,8892,8893,8894
+                  SYSCALL      TIME IN MS      COUNT
+                    fsync          641328     255131
+                    write           24664     255131
+                     read            4564     255631
+                   openat             461        982
+                    close               3       1000
+                   munmap               0          9
+                  madvise               0          9
+              sigaltstack               0          9
+                    futex               0         32
+------------

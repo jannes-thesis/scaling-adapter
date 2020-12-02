@@ -17,12 +17,20 @@ pub fn read_write_100kb_sync (file_dir: Arc<PathBuf>, index: usize) {
     read_write_Xkb_sync(file_dir, index, 100);
 }
 
+pub fn read_write_1mb_sync(file_dir: Arc<PathBuf>, index: usize) {
+    read_write_Xkb_sync(file_dir, index, 1000);
+}
+
 pub fn read_write_4mb_sync(file_dir: Arc<PathBuf>, index: usize) {
     read_write_Xkb_sync(file_dir, index, 4000);
 }
 
 pub fn read_write_buf_sync_1mb(file_dir: Arc<PathBuf>, index: usize) {
     read_write_buf_sync_Xkb(file_dir, index, 1000);
+}
+
+pub fn read_write_buf_sync_2mb(file_dir: Arc<PathBuf>, index: usize) {
+    read_write_buf_sync_Xkb(file_dir, index, 2000);
 }
 
 pub fn read_write_Xkb_sync(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u64) {

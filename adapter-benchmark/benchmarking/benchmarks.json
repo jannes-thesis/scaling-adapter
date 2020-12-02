@@ -76,7 +76,7 @@
         "amount_files": 500,
         "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
         "files_dir": "/ssd2/adapter-benchmark/files/1mb",
-        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 10",
+        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 10 1",
         "comment": "the bg command creates ~60MB/s disk write on the desktop SSD"
     },
     "rw_4kb_100us-bg_load": {
@@ -85,7 +85,48 @@
         "amount_files": 100000,
         "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
         "files_dir": "/ssd2/adapter-benchmark/files/4kb",
-        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 10",
+        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 10 1",
         "comment": "the bg command creates ~60MB/s disk write on the desktop SSD"
+    },
+    "rw_buf_1mb_100ms-bg_load2": {
+        "workload_name": "every100ms",
+        "worker_function": "read_write_buf_sync_1mb",
+        "amount_files": 500,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/1mb",
+        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 1 5",
+        "comment": "the bg command creates max 280MB/s disk write on the desktop SSD"
+    },
+    "rw_4kb_100us-bg_load2": {
+        "workload_name": "every100us",
+        "worker_function": "read_write_4kb_sync",
+        "amount_files": 100000,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/4kb",
+        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 1 5",
+        "comment": "the bg command creates max 280MB/s disk write on the desktop SSD"
+    },
+    "quick-test": {
+        "workload_name": "every100us",
+        "worker_function": "read_write_4kb_sync",
+        "amount_files": 100000,
+        "worker_threads": [ 4 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/4kb",
+        "bg_load_command": "../../target/release/disk_writer /ssd2/adapter-benchmark/files/1mb/1mb-1.txt . 1 5",
+        "comment": "the bg command creates max 280MB/s disk write on the desktop SSD"
+    },
+    "rw_1mb_1ms": {
+        "workload_name": "every1ms",
+        "worker_function": "read_write_1mb_sync",
+        "amount_files": 10000,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/1mb"
+    },
+    "rw_buf_2mb_100ms": {
+        "workload_name": "every100ms",
+        "worker_function": "read_write_buf_sync_2mb",
+        "amount_files": 500,
+        "worker_threads": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
+        "files_dir": "/ssd2/adapter-benchmark/files/2mb"
     }
 }
