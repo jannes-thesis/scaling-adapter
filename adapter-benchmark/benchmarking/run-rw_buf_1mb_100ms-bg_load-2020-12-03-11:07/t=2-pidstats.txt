@@ -1,0 +1,5 @@
+tracing threads: 22786,22787
+bytes_read, bytes_write, blkio_delays, non-vol ctx switch, vol ctx switc
+525279232 522559488 3 515 7
+262107136 261259264 6308 219572 337
+261750784 261300224 6276 218997 306
