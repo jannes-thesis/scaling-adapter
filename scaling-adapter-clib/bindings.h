@@ -21,6 +21,7 @@ typedef struct {
   uint64_t end_ms;
   uint64_t read_bytes;
   uint64_t write_bytes;
+  uint64_t blkio_delay;
   const SyscallData *syscalls_data;
   uintptr_t amount_targets;
 } IntervalDataFFI;

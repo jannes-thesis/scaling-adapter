@@ -21,6 +21,7 @@ pub struct IntervalDataFFI {
     pub end_ms: u64,
     pub read_bytes: u64,
     pub write_bytes: u64,
+    pub blkio_delay: u64,
     pub syscalls_data: *const SyscallData,
     pub amount_targets: usize,
 }
@@ -35,6 +36,7 @@ impl IntervalDataFFI {
             end_ms: data.start_millis(),
             read_bytes: data.read_bytes,
             write_bytes: data.write_bytes,
+            blkio_delay: data.blkio_delay,
             syscalls_data: data.syscalls_data.as_ptr(),
             amount_targets: data.amount_targets,
         }

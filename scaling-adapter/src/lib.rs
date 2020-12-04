@@ -19,6 +19,7 @@ pub struct IntervalData {
     pub end: SystemTime,
     pub read_bytes: u64,
     pub write_bytes: u64,
+    pub blkio_delay: u64,
     // same order as syscall_nr vec passed in ScalingParameters
     pub syscalls_data: Vec<SyscallData>,
     pub amount_targets: usize,
@@ -41,6 +42,7 @@ impl IntervalData {
         if targets_match {
             let read_bytes = snapshot_later.read_bytes - snapshot_earlier.read_bytes;
             let write_bytes = snapshot_later.write_bytes - snapshot_earlier.write_bytes;
+            let blkio_delay = snapshot_later.blkio_delay - snapshot_earlier.blkio_delay;
             let amount_targets = snapshot_earlier.targets.len();
             let mut syscalls_data = Vec::new();
             for syscall in snapshot_earlier.syscalls_data.keys() {
@@ -61,6 +63,7 @@ impl IntervalData {
                 end,
                 read_bytes,
                 write_bytes,
+                blkio_delay,
                 syscalls_data,
                 amount_targets,
             })
@@ -196,7 +199,24 @@ pub struct ScalingParameters {
 
 impl Default for ScalingParameters {
     fn default() -> Self {
-        todo!()
+        // read, write, fsync, openat, unlink (just use these for now)
+        // remember: can trace max 8 syscalls
+        let syscall_nrs = [0, 1, 74, 257, 87].to_vec();
+        let calc_metrics = Box::new(|data: &IntervalData| {
+            let rw_bytes = data.write_bytes + data.read_bytes;
+            let interval_ms = data.end_millis() - data.start_millis();
+            let throughput = rw_bytes as f64 / interval_ms as f64;
+            IntervalDerivedData {
+                scale_metric: throughput,
+                reset_metric: 0.0,
+            }
+        });
+        ScalingParameters {
+            syscall_nrs,
+            calc_metrics,
+            check_interval_ms: 1000,
+            stability_factor: 0.9,
+        }
     }
 }
 
