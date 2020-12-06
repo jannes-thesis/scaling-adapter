@@ -84,6 +84,30 @@ pub extern "C" fn new_adapter(
     (*adapter_global).is_some()
 }
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[no_mangle]
+/// create new adapter with default adapter parameters
+/// algo_params: comma separated string of all algorithm parameters values (constants that tweak algo)
+/// passing by string lets benchmarks use same code for all adapter versions
+///
+/// will panic for invalid algo parameter string
+pub extern "C" fn new_default_adapter(algo_params_str: *const c_char) -> bool {
+    let mut adapter_global = ADAPTER.write().unwrap();
+
+    let algo_parameters_str =
+        unsafe { CStr::from_ptr(algo_params_str).to_str() }.expect("invalid parameters string");
+    let algo_paramters = algo_parameters_str.split(',').collect::<Vec<&str>>();
+    let check_interval_ms = algo_paramters
+        .get(0)
+        .expect("empty parameters string")
+        .parse::<u64>()
+        .expect("could not parse check interval ms");
+
+    let params = ScalingParameters::default().with_check_interval_ms(check_interval_ms);
+    *adapter_global = ScalingAdapter::new(params).ok();
+    (*adapter_global).is_some()
+}
+
 fn convert_params(
     syscall_nrs: *const i32,
     amount_syscalls: usize,

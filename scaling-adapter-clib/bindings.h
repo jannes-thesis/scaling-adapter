@@ -51,6 +51,15 @@ int32_t get_scaling_advice(void);
 bool new_adapter(const AdapterParameters *parameters,
                  const char *algo_params_str);
 
+/**
+ * create new adapter with default adapter parameters
+ * algo_params: comma separated string of all algorithm parameters values (constants that tweak algo)
+ * passing by string lets benchmarks use same code for all adapter versions
+ *
+ * will panic for invalid algo parameter string
+ */
+bool new_default_adapter(const char *algo_params_str);
+
 bool remove_tracee(int32_t tracee_pid);
 
 #endif /* scaling_adapter_h */
