@@ -1,3 +1,5 @@
+use std::{panic, process};
+
 use clap::{App, Arg};
 
 use multi_phase::do_multi_phase_run;
@@ -85,6 +87,15 @@ fn main() {
                 ),
         )
         .get_matches();
+
+    // make sure if a worker thread panics that the whole benchmark fails
+    let orig_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        // invoke the default handler and exit the process
+        orig_hook(panic_info);
+        println!("worker thread paniced, exit whole process");
+        process::exit(1);
+    }));
 
     match matches.subcommand_name() {
         Some("single") => do_single_phase_run(matches),
