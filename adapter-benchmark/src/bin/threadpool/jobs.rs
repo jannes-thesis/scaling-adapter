@@ -13,7 +13,7 @@ pub fn read_write_4kb_sync(file_dir: Arc<PathBuf>, index: usize) {
     read_write_Xkb_sync(file_dir, index, 4);
 }
 
-pub fn read_write_100kb_sync (file_dir: Arc<PathBuf>, index: usize) {
+pub fn read_write_100kb_sync(file_dir: Arc<PathBuf>, index: usize) {
     read_write_Xkb_sync(file_dir, index, 100);
 }
 
@@ -35,12 +35,17 @@ pub fn read_write_buf_sync_2mb(file_dir: Arc<PathBuf>, index: usize) {
 
 pub fn read_write_Xkb_sync(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u64) {
     let input_filename = format_input_filename(file_size_kb, index);
+    let input_subdir = format_input_subdir(file_size_kb);
+    let input_filepath = file_dir.join(input_subdir).join(input_filename);
     let output_filename = format!("wout-{}.txt", index);
-    let input =
-        fs::read_to_string(file_dir.join(input_filename)).expect("error reading file to string");
+    let input = fs::read_to_string(&input_filepath).unwrap_or_else(|_| {
+        panic!(
+            "error reading file to string, path: {}",
+            input_filepath.to_str().unwrap()
+        )
+    });
     let output_filepath = file_dir.join(output_filename);
-    let mut output_file =
-        File::create(&output_filepath).expect("unexpected file error");
+    let mut output_file = File::create(&output_filepath).expect("unexpected file error");
     output_file
         .write_all(input.as_bytes())
         .expect("error writing input string to output");
@@ -51,8 +56,15 @@ pub fn read_write_Xkb_sync(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u
 
 pub fn read_write_buf_sync_Xkb(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u64) {
     let input_filename = format_input_filename(file_size_kb, index);
+    let input_subdir = format_input_subdir(file_size_kb);
+    let input_filepath = file_dir.join(input_subdir).join(input_filename);
+    let mut input_file = File::open(&input_filepath).unwrap_or_else(|_| {
+        panic!(
+            "unexpected file error, path: {}",
+            input_filepath.to_str().unwrap()
+        )
+    });
     let output_filename = format!("wout-{}.txt", index);
-    let mut input_file = File::open(file_dir.join(input_filename)).expect("unexpected file error");
     let mut output_file =
         File::create(file_dir.join(output_filename)).expect("unexpected file error");
     let mut buffer = [0; 4096];
@@ -75,6 +87,15 @@ pub fn read_write_buf_sync_Xkb(file_dir: Arc<PathBuf>, index: usize, file_size_k
             .write_all(read_slice)
             .expect("error writing to file");
         output_file.sync_all().expect("error fsyncing file");
+    }
+}
+
+fn format_input_subdir(file_size_kb: u64) -> String {
+    if file_size_kb >= 1000 {
+        let file_size_mb = file_size_kb / 1000;
+        format!("{}mb", file_size_mb)
+    } else {
+        format!("{}kb", file_size_kb)
     }
 }
 
