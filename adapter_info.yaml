@@ -10,5 +10,9 @@ algorithm_parameters:
   -
     description: The duration until the adapter records a new interval
     name: check_interval_ms
+  - description: The factor which determines sensitivity to target metric changes
+                 (the higher the more sensitive, must be between 0 and 1 exclusive)
+    name: stability_factor
 algorithm_parameter_combos:
-  - [1000]
+  - [1000, 0.9]
+  - [1000, 0.95]
