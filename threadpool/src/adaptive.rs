@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use log::debug;
+use log::{debug, info};
 use scaling_adapter::ScalingAdapter;
 
 use crate::{get_pid, Job, Threadpool};
@@ -93,7 +93,11 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
     loop {
         threadpool.adapt_size();
         // lock queue, get item, unlock queue
-        let mut work_item = threadpool.work_queue.lock().unwrap().pop_front();
+        let mut work_queue_guard = threadpool.work_queue.lock().unwrap();
+        let queue_size = work_queue_guard.len();
+        let mut work_item = work_queue_guard.pop_front();
+        drop(work_queue_guard);
+        info!("_I_QSIZE: {}", queue_size);
         while work_item.is_none() && !threadpool.is_stopping() {
             // relock queue
             let work_queue_guard = threadpool.work_queue.lock().unwrap();
@@ -154,7 +158,7 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
 
 impl AdaptiveThreadpool {
     pub fn new(scaling_adapter: ScalingAdapter) -> Arc<Self> {
-        Arc::new(AdaptiveThreadpool {
+        let thread_pool = Arc::new(AdaptiveThreadpool {
             work_queue: Mutex::new(VecDeque::new()),
             workers: Mutex::new(HashSet::new()),
             busy_workers_count: Mutex::new(0),
@@ -164,7 +168,9 @@ impl AdaptiveThreadpool {
             is_stopping: AtomicBool::new(false),
             scaling_adapter: Mutex::new(scaling_adapter),
             next_worker_id: AtomicUsize::new(0),
-        })
+        });
+        thread_pool.clone().spawn_worker();
+        thread_pool
     }
 
     fn adapt_size(&self) {
