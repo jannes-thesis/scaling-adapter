@@ -3,7 +3,7 @@ use std::time::{Duration, SystemTime};
 
 use errors::AdapterError;
 use intervals::IntervalMetrics;
-use log::debug;
+use log::{debug, info};
 use tracesets::{Traceset, TracesetSnapshot};
 use AdapterState::Settled;
 
@@ -190,8 +190,8 @@ impl ScalingAdapter {
             if self.recent_invalid_intervals > 0 {
                 return 0;
             }
-            match self.state {
-                AdapterState::Startup => self.scaling_advice_startup(),
+            let advice = match self.state {
+                AdapterState::Startup => return self.scaling_advice_startup(),
                 AdapterState::Settled(timeout, direction) => {
                     if SystemTime::now() > timeout {
                         self.scaling_advice_settled(direction)
@@ -201,7 +201,16 @@ impl ScalingAdapter {
                 }
                 AdapterState::Scaling(i) => self.scaling_advice_scaling(i),
                 AdapterState::Exploring(direction) => self.scaling_advice_exploring(direction),
-            }
+            };
+            // at least one recent interval must exists, as we are not in startup state anymore
+            let latest_interval = self.metrics_history.get(0).unwrap();
+            let amount_targets = latest_interval.amount_targets;
+            let m1 = latest_interval.derived_data.scale_metric;
+            let m2 = latest_interval.derived_data.reset_metric;
+            info!("_I_PSIZE: {}", amount_targets);
+            info!("_I_M1_VAL: {}", m1);
+            info!("_I_M2_VAL: {}", m2);
+            advice
         } else {
             0
         }
