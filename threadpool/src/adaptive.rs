@@ -58,7 +58,10 @@ impl Threadpool for AdaptiveThreadpool {
     fn wait_completion(&self) {
         debug!("wait for completion");
         let mut busy_count = self.busy_workers_count.lock().unwrap();
-        while *busy_count > 0 {
+        // wait until no workers are active anymore and queue is empty
+        // HOLDING 2 LOCKS HERE 1. busy count 2. work_queue
+        // safe as long as it is the only place where 2 locks are grabbed simultaneously
+        while *busy_count > 0 || !self.work_queue.lock().unwrap().is_empty() {
             busy_count = self.all_workers_idle.wait(busy_count).unwrap();
         }
     }
