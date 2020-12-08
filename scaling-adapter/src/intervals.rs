@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::time::{SystemTime};
 
-use log::debug;
+use log::{debug, info};
 use tracesets::{SyscallData, TracesetSnapshot};
 
 
@@ -23,6 +23,16 @@ pub struct IntervalData {
 unsafe impl std::marker::Send for IntervalData {}
 unsafe impl std::marker::Sync for IntervalData {}
 
+fn subtract_or_zero(a: u64, b: u64, context: &str) -> u64 {
+    match a.checked_sub(b) {
+        Some(result) => result,
+        None => {
+            info!("u64 subtract overflow, context: {}", context);
+            0
+        }
+    }
+}
+
 impl IntervalData {
     pub fn new(
         snapshot_earlier: &TracesetSnapshot,
@@ -34,9 +44,9 @@ impl IntervalData {
         );
         let targets_match = snapshot_earlier.targets.eq(&snapshot_later.targets);
         if targets_match {
-            let read_bytes = snapshot_later.read_bytes - snapshot_earlier.read_bytes;
-            let write_bytes = snapshot_later.write_bytes - snapshot_earlier.write_bytes;
-            let blkio_delay = snapshot_later.blkio_delay - snapshot_earlier.blkio_delay;
+            let read_bytes = subtract_or_zero(snapshot_later.read_bytes, snapshot_earlier.read_bytes, "rb");
+            let write_bytes = subtract_or_zero(snapshot_later.write_bytes, snapshot_earlier.write_bytes, "wb");
+            let blkio_delay = subtract_or_zero(snapshot_later.blkio_delay, snapshot_earlier.blkio_delay, "blkio");
             let amount_targets = snapshot_earlier.targets.len();
             let mut syscalls_data = Vec::new();
             for syscall in snapshot_earlier.syscalls_data.keys() {
