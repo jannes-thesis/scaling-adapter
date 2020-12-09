@@ -38,7 +38,7 @@ bool add_tracee(int32_t tracee_pid);
 
 void close_adapter(void);
 
-int32_t get_scaling_advice(void);
+int32_t get_scaling_advice(int32_t queue_size);
 
 /**
  * create new adapter

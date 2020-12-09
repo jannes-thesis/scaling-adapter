@@ -171,7 +171,7 @@ impl ScalingAdapter {
         }
     }
 
-    pub fn get_scaling_advice(&mut self) -> i32 {
+    pub fn get_scaling_advice(&mut self, queue_size: i32) -> i32 {
         let now = SystemTime::now();
         let elapsed = now
             .duration_since(self.latest_snapshot_time)
@@ -179,6 +179,7 @@ impl ScalingAdapter {
             .unwrap_or(0);
         if elapsed >= self.parameters.check_interval_ms as u128 {
             info!("ADVICE: new advice, enough time elapsed");
+            info!("_I_QSIZE: {}", queue_size);
             self.update();
             // if latest interval not valid (amount targets changed)
             if self.recent_invalid_intervals > 0 {

@@ -154,14 +154,14 @@ pub extern "C" fn remove_tracee(tracee_pid: i32) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn get_scaling_advice() -> i32 {
+pub extern "C" fn get_scaling_advice(queue_size: i32) -> i32 {
     let mut adapter_global = match ADAPTER.try_write() {
         Ok(option) => option,
         Err(_) => return 0,
     };
     assert!((*adapter_global).is_some());
     let adapter = adapter_global.as_mut().unwrap();
-    adapter.get_scaling_advice()
+    adapter.get_scaling_advice(queue_size)
 }
 
 #[no_mangle]

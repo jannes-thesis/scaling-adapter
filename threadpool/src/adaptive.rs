@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use log::{debug, info};
+use log::debug;
 use scaling_adapter::ScalingAdapter;
 
 use crate::{get_pid, Job, Threadpool};
@@ -96,11 +96,7 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
     loop {
         threadpool.adapt_size();
         // lock queue, get item, unlock queue
-        let mut work_queue_guard = threadpool.work_queue.lock().unwrap();
-        let queue_size = work_queue_guard.len();
-        let mut work_item = work_queue_guard.pop_front();
-        drop(work_queue_guard);
-        info!("_I_QSIZE: {}", queue_size);
+        let mut work_item = threadpool.work_queue.lock().unwrap().pop_front();
         while work_item.is_none() && !threadpool.is_stopping() {
             // relock queue
             let work_queue_guard = threadpool.work_queue.lock().unwrap();
@@ -178,7 +174,8 @@ impl AdaptiveThreadpool {
     }
 
     fn adapt_size(&self) {
-        let mut to_scale = self.scaling_adapter.lock().unwrap().get_scaling_advice();
+        let queue_size = self.work_queue.lock().unwrap().len() as i32;
+        let mut to_scale = self.scaling_adapter.lock().unwrap().get_scaling_advice(queue_size);
         debug!("got scaling advice: {}", to_scale);
         let current_size = self.workers.lock().unwrap().len() as i32;
         //
