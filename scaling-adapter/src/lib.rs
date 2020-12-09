@@ -25,8 +25,6 @@ pub struct ScalingAdapter {
     latest_snapshot: TracesetSnapshot,
     latest_snapshot_time: SystemTime,
     recent_invalid_intervals: usize,
-    // maximum of idle metric in current phase
-    max_reset_metric: f64,
 }
 
 // synchronize access by wrapping with Arc<Mutex<_>>
@@ -43,7 +41,6 @@ impl ScalingAdapter {
             latest_snapshot: initial_snapshot,
             latest_snapshot_time: SystemTime::now(),
             recent_invalid_intervals: 0,
-            max_reset_metric: 0.0,
         })
     }
 
@@ -73,12 +70,6 @@ impl ScalingAdapter {
                     interval_start: self.latest_snapshot_time,
                     interval_end: snapshot_time,
                 };
-                self.max_reset_metric =
-                    if self.max_reset_metric > history_point.derived_data.reset_metric {
-                        self.max_reset_metric
-                    } else {
-                        history_point.derived_data.reset_metric
-                    };
                 self.metrics_history.add(history_point);
                 self.recent_invalid_intervals = 0;
                 true
@@ -141,7 +132,7 @@ impl ScalingAdapter {
                     .unwrap(),
                 direction,
             );
-            step_size
+            -step_size
         }
     }
 
@@ -185,11 +176,14 @@ impl ScalingAdapter {
             .map(|duration| duration.as_millis())
             .unwrap_or(0);
         if elapsed >= self.parameters.check_interval_ms as u128 {
+            info!("ADVICE: new advice, enough time elapsed");
             self.update();
             // if latest interval not valid (amount targets changed)
             if self.recent_invalid_intervals > 0 {
+                info!("ADVICE: invalid interval (targets changed), advice 0");
                 return 0;
             }
+            info!("ADVICE: current state: {:?}", self.state);
             let advice = match self.state {
                 AdapterState::Startup => return self.scaling_advice_startup(),
                 AdapterState::Settled(timeout, direction) => {
@@ -202,6 +196,7 @@ impl ScalingAdapter {
                 AdapterState::Scaling(i) => self.scaling_advice_scaling(i),
                 AdapterState::Exploring(direction) => self.scaling_advice_exploring(direction),
             };
+            info!("ADVICE: new state: {:?}", self.state);
             // at least one recent interval must exists, as we are not in startup state anymore
             let latest_interval = self.metrics_history.get(0).unwrap();
             let amount_targets = latest_interval.amount_targets;
@@ -210,6 +205,7 @@ impl ScalingAdapter {
             info!("_I_PSIZE: {}", amount_targets);
             info!("_I_M1_VAL: {}", m1);
             info!("_I_M2_VAL: {}", m2);
+            info!("ADVICE: {}", advice);
             advice
         } else {
             0
@@ -292,7 +288,7 @@ impl MetricsHistory {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 enum Direction {
     Up,
     Down,
@@ -315,6 +311,7 @@ impl Direction {
     }
 }
 
+#[derive(Debug)]
 enum AdapterState {
     Startup,
     Scaling(i32),
