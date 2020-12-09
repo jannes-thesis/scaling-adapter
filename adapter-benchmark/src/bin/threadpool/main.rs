@@ -88,6 +88,9 @@ fn main() {
         )
         .get_matches();
 
+    // pass log level via RUST_LOG environment variable
+    env_logger::init();
+
     // make sure if a worker thread panics that the whole benchmark fails
     let orig_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_info| {
