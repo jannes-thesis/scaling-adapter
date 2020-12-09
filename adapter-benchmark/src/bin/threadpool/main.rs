@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::{panic, process};
 
 use clap::{App, Arg};
@@ -89,7 +90,20 @@ fn main() {
         .get_matches();
 
     // pass log level via RUST_LOG environment variable
-    env_logger::init();
+    env_logger::builder()
+        .format(|buf, record| {
+            let ts = buf.timestamp_millis();
+            let module_path = record.module_path().unwrap_or("");
+            writeln!(
+                buf,
+                "[{} {} {}]: {}",
+                ts,
+                record.level(),
+                module_path,
+                record.args()
+            )
+        })
+        .init();
 
     // make sure if a worker thread panics that the whole benchmark fails
     let orig_hook = panic::take_hook();

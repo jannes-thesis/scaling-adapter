@@ -114,3 +114,21 @@ pub struct IntervalMetrics {
     pub interval_start: SystemTime,
     pub interval_end: SystemTime,
 }
+
+impl IntervalMetrics {
+     // can safely use as_millis as u64 (only overflow at unix epoch + half billion years)
+     pub fn start_millis(&self) -> u64 {
+        self.interval_start
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("interval start before unix epoch")
+            .as_millis() as u64
+    }
+
+    // can safely use as_millis as u64 (only overflow at unix epoch + half billion years)
+    pub fn end_millis(&self) -> u64 {
+        self.interval_end
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("interval start before unix epoch")
+            .as_millis() as u64
+    }
+}

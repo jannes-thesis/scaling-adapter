@@ -33,6 +33,7 @@ impl ScalingAdapter {
         let traceset = Traceset::new(&Vec::new(), &params.syscall_nrs)
             .ok_or(AdapterError::TracesetInitFailure)?;
         let initial_snapshot = traceset.get_snapshot();
+        info!("_I_AdapterInit");
         Ok(ScalingAdapter {
             parameters: params,
             traceset,
@@ -63,6 +64,7 @@ impl ScalingAdapter {
         let interval_data = IntervalData::new(&self.latest_snapshot, &snapshot);
         let is_success = match interval_data {
             Some(data) => {
+                debug!("UPDATE: {:?}", data);
                 let metrics = (self.parameters.calc_metrics)(&data);
                 let history_point = IntervalMetrics {
                     derived_data: metrics,
@@ -199,9 +201,11 @@ impl ScalingAdapter {
             info!("ADVICE: new state: {:?}", self.state);
             // at least one recent interval must exists, as we are not in startup state anymore
             let latest_interval = self.metrics_history.get(0).unwrap();
+            let interval_duration = latest_interval.end_millis() - latest_interval.start_millis();
             let amount_targets = latest_interval.amount_targets;
             let m1 = latest_interval.derived_data.scale_metric;
             let m2 = latest_interval.derived_data.reset_metric;
+            debug!("ADVICE: last interval ms: {}", interval_duration);
             info!("_I_PSIZE: {}", amount_targets);
             info!("_I_M1_VAL: {}", m1);
             info!("_I_M2_VAL: {}", m2);
