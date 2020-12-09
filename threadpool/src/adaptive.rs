@@ -154,6 +154,7 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
         }
     }
     debug!("worker terminating, pid: {}", worker_pid);
+    threadpool.scaling_adapter.lock().unwrap().remove_tracee(worker_pid);
     if threadpool.workers.lock().unwrap().len() == 0 {
         threadpool.all_workers_exited.notify_all();
     }
