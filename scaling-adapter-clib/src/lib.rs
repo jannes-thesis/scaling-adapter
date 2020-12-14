@@ -203,9 +203,9 @@ mod tests {
         assert!((*adapter_global).is_some());
         let adapter = adapter_global.as_mut().unwrap();
         // 1. update amount of targets, sleep long enough for one call to nanosleep, 2. update to get valid interval data
-        adapter.update();
+        adapter.update(0);
         thread::sleep(time::Duration::from_millis(2500));
-        adapter.update();
+        adapter.update(0);
         adapter.get_latest_metrics()
             .expect("latest metric to exist because between last two updates the amount of targets did not change")
             .derived_data

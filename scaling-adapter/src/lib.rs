@@ -381,6 +381,7 @@ mod tests {
                 amount_targets: i,
                 interval_start: SystemTime::now(),
                 interval_end: SystemTime::now(),
+                queue_size: 0,
             };
             result.add(dummy);
         }
@@ -431,7 +432,7 @@ mod tests {
         let mut adapter = ScalingAdapter::new(params).unwrap();
         for i in 0..45 {
             println!("index: {}", i);
-            let _advice = adapter.get_scaling_advice();
+            let _advice = adapter.get_scaling_advice(0);
             thread::sleep(Duration::from_millis(10));
         }
     }
@@ -465,11 +466,11 @@ mod tests {
         assert!(is_added);
         thread::sleep(time::Duration::from_millis(1000));
         // update adapter and get latest metric, verify scale_metric is > 0
-        let interval_valid = adapter.update();
+        let interval_valid = adapter.update(0);
         // frst interval should not be valid, amount of targets changed
         assert!(!interval_valid);
         thread::sleep(time::Duration::from_millis(2000));
-        let interval_valid = adapter.update();
+        let interval_valid = adapter.update(0);
         // second interval should be valid, amount of targets did not change
         assert!(interval_valid);
         let latest_metrics = adapter

@@ -36,7 +36,7 @@ fn simple_test() {
     // adaptive scaling
     #[allow(clippy::comparison_chain)]
     while workqueue.size() > 0 {
-        let scaling_advice = adapter.clone().write().unwrap().get_scaling_advice();
+        let scaling_advice = adapter.clone().write().unwrap().get_scaling_advice(-1);
         debug!("got scaling advice: scale by {}", scaling_advice);
         if scaling_advice > 0 {
             for _i in 0..scaling_advice {
