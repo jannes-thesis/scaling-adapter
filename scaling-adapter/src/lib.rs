@@ -403,7 +403,7 @@ mod tests {
         let mut adapter = ScalingAdapter::new(params).unwrap();
         for i in 0..45 {
             println!("index: {}", i);
-            let _advice = adapter.get_scaling_advice();
+            let _advice = adapter.get_scaling_advice(0);
             thread::sleep(Duration::from_millis(10));
         }
     }
