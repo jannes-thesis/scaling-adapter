@@ -113,6 +113,7 @@ pub struct IntervalMetrics {
     pub amount_targets: usize,
     pub interval_start: SystemTime,
     pub interval_end: SystemTime,
+    pub queue_size: usize, // size of thread pool queue at end of interval
 }
 
 impl IntervalMetrics {

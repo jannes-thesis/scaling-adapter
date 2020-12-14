@@ -12,6 +12,7 @@ c_repr = ["tracesets/c_repr"]
 [dependencies]
 tracesets = { path = "../tracesets" }
 log = "0.4.11"
+rand = "0.7.3"
 
 [dev-dependencies]
 test-utils = { path = "../test-utils" }

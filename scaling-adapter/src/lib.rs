@@ -58,7 +58,7 @@ impl ScalingAdapter {
     ///      update history and return true
     /// else
     ///      return false
-    pub fn update(&mut self) -> bool {
+    pub fn update(&mut self, queue_size: usize) -> bool {
         let snapshot = self.traceset.get_snapshot();
         let snapshot_time = SystemTime::now();
         let interval_data = IntervalData::new(&self.latest_snapshot, &snapshot);
@@ -71,6 +71,7 @@ impl ScalingAdapter {
                     amount_targets: self.latest_snapshot.targets.len(),
                     interval_start: self.latest_snapshot_time,
                     interval_end: snapshot_time,
+                    queue_size,
                 };
                 self.metrics_history.add(history_point);
                 self.recent_invalid_intervals = 0;
@@ -95,18 +96,31 @@ impl ScalingAdapter {
         1
     }
 
+    fn explore_down(&mut self) -> i32 {
+        debug!("{}", "Exploring DOWN");
+        self.state = AdapterState::Exploring(Direction::Down);
+        -1
+    }
+
+    fn explore_up(&mut self) -> i32 {
+        debug!("{}", "Exploring UP");
+        self.state = AdapterState::Exploring(Direction::Up);
+        1
+    }
+
     fn scaling_advice_settled(&mut self, last_direction: Direction) -> i32 {
+        if self.metrics_history.size() >= 3 {
+            let queue_size0 = self.metrics_history.get(0).unwrap().queue_size;
+            let queue_size1 = self.metrics_history.get(1).unwrap().queue_size;
+            let queue_size2 = self.metrics_history.get(2).unwrap().queue_size;
+            // if queue size has been low for 3 intervals explore down with chance of 50%
+            if queue_size0 < 10 && queue_size1 < 10 && queue_size2 < 10 && rand::random() {
+                return self.explore_down();
+            }
+        }
         match last_direction {
-            Direction::Up => {
-                debug!("{}", "Exploring DOWN");
-                self.state = AdapterState::Exploring(Direction::Down);
-                -1
-            }
-            Direction::Down => {
-                debug!("{}", "Exploring UP");
-                self.state = AdapterState::Exploring(Direction::Up);
-                1
-            }
+            Direction::Up => self.explore_down(),
+            Direction::Down => self.explore_up(),
         }
     }
 
@@ -119,15 +133,19 @@ impl ScalingAdapter {
             Direction::Up => 1,
             Direction::Down => -1,
         };
-        // enter scaling state
+        // if higher perf: enter scaling state
         if latest.derived_data.scale_metric * self.parameters.stability_factor
             > previous.derived_data.scale_metric
         {
             self.state = AdapterState::Scaling(step_size);
             step_size
+        // if lower perf or same perf while exploring up:
         // scale back to previous & enter settled state
         // set timeout for next explore move
-        } else {
+        } else if previous.derived_data.scale_metric * self.parameters.stability_factor
+            > latest.derived_data.scale_metric
+            || direction == Direction::Up
+        {
             self.state = Settled(
                 SystemTime::now()
                     .checked_add(Duration::from_millis(2000))
@@ -135,6 +153,11 @@ impl ScalingAdapter {
                 direction,
             );
             -step_size
+        }
+        // if same perf while exploring down:
+        // keep exploring downwards with step size one
+        else {
+            step_size
         }
     }
 
@@ -180,7 +203,12 @@ impl ScalingAdapter {
         if elapsed >= self.parameters.check_interval_ms as u128 {
             info!("ADVICE: new advice, enough time elapsed");
             info!("_I_QSIZE: {}", queue_size);
-            self.update();
+            let queue_size = if queue_size < 0 {
+                usize::MAX
+            } else {
+                queue_size as usize
+            };
+            self.update(queue_size);
             // if latest interval not valid (amount targets changed)
             if self.recent_invalid_intervals > 0 {
                 info!("ADVICE: invalid interval (targets changed), advice 0");
@@ -293,7 +321,7 @@ impl MetricsHistory {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum Direction {
     Up,
     Down,

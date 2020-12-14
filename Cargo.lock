@@ -656,6 +656,7 @@ dependencies = [
  "env_logger",
  "libc",
  "log",
+ "rand",
  "subprocess",
  "test-utils",
  "tracesets",
