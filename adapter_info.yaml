@@ -19,4 +19,5 @@ algorithm_parameters:
 algorithm_parameter_combos:
   - [1000, 0.9]
   - [1000, 0.95]
+  - [2000, 0.9]
   - [2000, 0.95]
