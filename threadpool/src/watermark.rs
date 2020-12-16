@@ -140,8 +140,13 @@ fn worker_loop(threadpool: Arc<WatermarkThreadpool>) {
 
         let mut busy_count = threadpool.busy_workers_count.lock().unwrap();
         *busy_count -= 1;
+        let all_workers_idle = *busy_count == 0;
+        drop(busy_count);
+        // in case of no more work, all workers idling, and thread pool not being stopped
+        // the potentially 'waiting for completion' callee is signaled
+        // when grabbing lock for workqueue, no other lock is being held
         if !threadpool.is_stopping()
-            && *busy_count == 0
+            && all_workers_idle
             && threadpool.job_queue.lock().unwrap().is_empty()
         {
             threadpool.all_workers_idle.notify_one();
@@ -181,10 +186,26 @@ impl WatermarkThreadpool {
 
     pub fn new_untyped(params: &str) -> Arc<Self> {
         let param_list: Vec<&str> = params.split(',').collect();
-        let min_size: usize = param_list.get(0).unwrap().parse().expect("invalid min_size arg");
-        let max_size: usize = param_list.get(1).unwrap().parse().expect("invalid max_size arg");
-        let idle_threshold_millis: u64 = param_list.get(2).unwrap().parse().expect("invalid idle threshold");
-        WatermarkThreadpool::new(min_size, max_size, Duration::from_millis(idle_threshold_millis))
+        let min_size: usize = param_list
+            .get(0)
+            .unwrap()
+            .parse()
+            .expect("invalid min_size arg");
+        let max_size: usize = param_list
+            .get(1)
+            .unwrap()
+            .parse()
+            .expect("invalid max_size arg");
+        let idle_threshold_millis: u64 = param_list
+            .get(2)
+            .unwrap()
+            .parse()
+            .expect("invalid idle threshold");
+        WatermarkThreadpool::new(
+            min_size,
+            max_size,
+            Duration::from_millis(idle_threshold_millis),
+        )
     }
 
     fn spawn_worker(self: Arc<Self>) {
