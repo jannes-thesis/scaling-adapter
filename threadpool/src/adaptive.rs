@@ -123,11 +123,15 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
                 *busy_count += 1;
                 drop(busy_count);
                 job.execute();
-
                 let mut busy_count = threadpool.busy_workers_count.lock().unwrap();
                 *busy_count -= 1;
+                let all_workers_idle = *busy_count == 0;
+                drop(busy_count);
+                // in case of no more work, all workers idling, and thread pool not being stopped
+                // the potentially 'waiting for completion' callee is signaled
+                // when grabbing lock for workqueue, no other lock is being held
                 if !threadpool.is_stopping()
-                    && *busy_count == 0
+                    && all_workers_idle
                     && threadpool.work_queue.lock().unwrap().is_empty()
                 {
                     threadpool.all_workers_idle.notify_one();

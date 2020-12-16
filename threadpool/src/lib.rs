@@ -13,6 +13,7 @@ impl Job {
 }
 
 /// never call wait and destroy at the same time
+/// -> deadlock
 pub trait Threadpool {
     /// submit a job (function without return value)
     /// immediately returns, job is executed at some point after submission
