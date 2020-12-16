@@ -12,8 +12,9 @@ def process_systemtap_output(lines):
 
 
 def convert_pidstat_line(line):
+    """ return read_bytes, write_bytes, blkio_delay, rchar, wchar """
     fields = line.split()
-    return int(fields[0]), int(fields[1]), int(fields[2])
+    return int(fields[0]), int(fields[1]), int(fields[2]), int(fields[5]), int(fields[6])
 
 
 def convert_pidstat(lines):
@@ -25,7 +26,9 @@ def convert_pidstat(lines):
     agg_read = sum([fields[0] for fields in lines_fields])
     agg_write = sum([fields[1] for fields in lines_fields])
     io_wait = sum([fields[2] for fields in lines_fields])
-    return agg_read, agg_write, io_wait
+    agg_rchar = sum([fields[3] for fields in lines_fields])
+    agg_wchar = sum([fields[4] for fields in lines_fields])
+    return agg_read, agg_write, io_wait, agg_rchar, agg_wchar
 
 
 def process_result_files(result_dir, thread_amounts, benchmark_name):
@@ -49,9 +52,9 @@ def process_result_files(result_dir, thread_amounts, benchmark_name):
             benchmark_run['syscall_metrics'] = stats_maps
         with open(pidstats_file) as f:
             lines = f.readlines()
-            bytes_read, bytes_written, iowait = convert_pidstat(lines)
+            bytes_read, bytes_written, iowait, rchar, wchar = convert_pidstat(lines)
             benchmark_run['io_throughput'] = {
-                'read_bytes': bytes_read, 'write_bytes': bytes_written}
+                'read_bytes': bytes_read, 'write_bytes': bytes_written, 'rchar': rchar, 'wchar': wchar}
             benchmark_run['iowait'] = iowait
         results.append(benchmark_run)
     return results
