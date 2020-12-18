@@ -8,10 +8,7 @@ use std::{
 
 use clap::ArgMatches;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use threadpool::{
-    adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, watermark::WatermarkThreadpool, Job,
-    Threadpool,
-};
+use threadpool::{Job, Threadpool, adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_tracer::FixedTracerThreadpool, watermark::WatermarkThreadpool};
 
 use crate::{
     jobs::read_write_100kb_sync, jobs::read_write_buf_sync_1mb, jobs::read_write_buf_sync_2mb,
@@ -176,6 +173,10 @@ pub fn do_multi_phase_run(matches: ArgMatches) {
         "fixed" => {
             let pool_size: usize = pool_params.parse().expect("invalid pool size");
             FixedThreadpool::new(pool_size)
+        }
+        "fixed-tracer" => {
+            let pool_size: usize = pool_params.parse().expect("invalid pool size");
+            FixedTracerThreadpool::new(pool_size)
         }
         "watermark" => WatermarkThreadpool::new_untyped(pool_params),
         _ => {

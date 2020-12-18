@@ -2,10 +2,7 @@ use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use clap::ArgMatches;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use threadpool::{
-    adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, watermark::WatermarkThreadpool,
-    Threadpool,
-};
+use threadpool::{Threadpool, adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_tracer::FixedTracerThreadpool, watermark::WatermarkThreadpool};
 
 use crate::{jobs::{JobFunction, read_write_100kb_sync, read_write_1mb_sync, read_write_2mb_nosync, read_write_2mb_sync, read_write_4kb_sync, read_write_4mb_sync, read_write_buf_sync_1mb, read_write_buf_sync_2mb}, loads::{every100ms, every100us, every10ms, every1ms, every1s, every200ms, every50ms}};
 
@@ -29,6 +26,10 @@ pub fn do_single_phase_run(matches: ArgMatches) {
         "fixed" => {
             let pool_size: usize = pool_params.parse().expect("invalid pool size");
             FixedThreadpool::new(pool_size)
+        }
+        "fixed-tracer" => {
+            let pool_size: usize = pool_params.parse().expect("invalid pool size");
+            FixedTracerThreadpool::new(pool_size)
         }
         "watermark" => WatermarkThreadpool::new_untyped(pool_params),
         _ => {
