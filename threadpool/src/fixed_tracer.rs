@@ -151,14 +151,32 @@ impl FixedTracerThreadpool {
                 })
                 .unwrap_or_else(|_| panic!("thread creation for worker: {} failed", name));
         }
+        info!("_METRICS_init");
         threadpool
     }
 
     pub fn log_metrics(&self) {
         let now = Instant::now();
+        // do first check as reader only as it is cheaper
         if *self.next_log_time.read().unwrap() > now {
             return;
         }
+        // only if first check passed, attempt to grab write lock
+        let mut nlt_guard = match self.next_log_time.try_write() {
+            Ok(g) => g,
+            // someone else is already doing the logging for this interval
+            Err(_) => {
+                return;
+            }
+        };
+        // if someone sneaked in between and already logged interval
+        if *nlt_guard > now {
+            return;
+        }
+        let next_log_time = now.checked_add(Duration::from_secs(1)).unwrap();
+        *nlt_guard = next_log_time;
+        drop(nlt_guard);
+
         let qsize = self.job_queue.lock().unwrap().len();
         info!("_METRICS_qsize: {}", qsize);
         let tids = self.workers.lock().unwrap().clone();
@@ -177,8 +195,6 @@ impl FixedTracerThreadpool {
         let total_syscall_calls: u32 = snapshot.syscalls_data.values().map(|sd| sd.count).sum();
         info!("_METRICS_sysc-time: {}", total_syscall_time);
         info!("_METRICS_sysc-count: {}", total_syscall_calls);
-        let next_log_time = now.checked_add(Duration::from_secs(1)).unwrap();
-        *self.next_log_time.write().unwrap() = next_log_time;
     }
 
     fn is_stopping(&self) -> bool {
@@ -192,7 +208,8 @@ fn get_rw_bytes(tids: HashSet<i32>) -> (u64, u64) {
     for tid in tids {
         let path = format!("/proc/{}/io", tid);
         let text = fs::read_to_string(path).expect("failed to read from proc");
-        let w_bytes: u64 = text.lines()
+        let w_bytes: u64 = text
+            .lines()
             .find(|line| line.starts_with("write_bytes"))
             .expect("did not find write_bytes line")
             .split(' ')
@@ -200,7 +217,8 @@ fn get_rw_bytes(tids: HashSet<i32>) -> (u64, u64) {
             .expect("did not find write_bytes in split")
             .parse()
             .expect("parse to u64 failed");
-        let r_bytes: u64 = text.lines()
+        let r_bytes: u64 = text
+            .lines()
             .find(|line| line.starts_with("read_bytes"))
             .expect("did not find read_bytes line")
             .split(' ')
