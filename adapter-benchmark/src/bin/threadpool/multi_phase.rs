@@ -8,17 +8,55 @@ use std::{
 
 use clap::ArgMatches;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use threadpool::{Job, Threadpool, adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_tracer::FixedTracerThreadpool, watermark::WatermarkThreadpool};
+use threadpool::{
+    adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_tracer::FixedTracerThreadpool,
+    watermark::WatermarkThreadpool, Job, Threadpool,
+};
 
 use crate::{
-    jobs::read_write_100kb_sync, jobs::read_write_buf_sync_1mb, jobs::read_write_buf_sync_2mb,
-    loads::every100ms, loads::every100us, loads::every1ms,
+    jobs::read_write_100kb_sync,
+    jobs::read_write_buf_sync_1mb,
+    jobs::{read_write_2mb_nosync, read_write_2mb_sync, read_write_buf_sync_2mb},
+    loads::every100ms,
+    loads::every100us,
+    loads::every1ms,
 };
 
 enum BgProcess {
     NotYetStarted,
     Running(Child),
     Killed,
+}
+
+fn sync_nosync_sync_2mb(threadpool: Arc<dyn Threadpool>, num_jobs: usize, output_dir: PathBuf) {
+    let output_dir = Arc::new(output_dir);
+    let sync_function = Arc::new(read_write_2mb_sync);
+    let nosync_function = Arc::new(read_write_2mb_nosync);
+    let num_jobs_f = num_jobs as f64;
+    for i in 0..num_jobs {
+        let path = output_dir.clone();
+        let i_f = i as f64;
+        let job = if i_f < num_jobs_f * 0.15 || i_f > num_jobs_f * 0.85 {
+            let f = sync_function.clone();
+            Job {
+                function: Box::new(move || {
+                    let p = path.clone();
+                    f(p, i);
+                }),
+            }
+        } else {
+            let f = nosync_function.clone();
+            Job {
+                function: Box::new(move || {
+                    let p = path.clone();
+                    f(p, i);
+                }),
+            }
+        };
+        threadpool.submit_job(job);
+    }
+    threadpool.wait_completion();
+    threadpool.destroy();
 }
 
 fn rw_buf_1mb_100ms_bgload(
@@ -201,6 +239,7 @@ pub fn do_multi_phase_run(matches: ArgMatches) {
             Duration::from_secs(25),
             Duration::from_secs(75),
         ),
+        "sync_nosync_sync_2mb" => sync_nosync_sync_2mb(thread_pool, num_jobs, output_dir),
         _ => panic!("invalid workload"),
     }
     let runtime = Instant::now().duration_since(start);
