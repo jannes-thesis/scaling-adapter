@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-
 INIT_MARKER = '_METRICS_init'
 QUEUE_SIZE_MARKER = '_METRICS_qsize:'
 WCHAR_MARKER = '_METRICS_wchar:'
