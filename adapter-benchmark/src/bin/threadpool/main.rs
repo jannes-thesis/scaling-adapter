@@ -110,7 +110,7 @@ fn main() {
     panic::set_hook(Box::new(move |panic_info| {
         // invoke the default handler and exit the process
         orig_hook(panic_info);
-        println!("worker thread paniced, exit whole process");
+        println!("some thread paniced, exit whole process");
         process::exit(1);
     }));
 

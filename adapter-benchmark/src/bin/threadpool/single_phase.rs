@@ -2,9 +2,19 @@ use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use clap::ArgMatches;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use threadpool::{Threadpool, adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_tracer::FixedTracerThreadpool, watermark::WatermarkThreadpool};
+use threadpool::{
+    adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_tracer::FixedTracerThreadpool,
+    watermark::WatermarkThreadpool, Threadpool,
+};
 
-use crate::{jobs::{JobFunction, read_write_100kb_sync, read_write_1mb_sync, read_write_2mb_nosync, read_write_2mb_sync, read_write_4kb_sync, read_write_4mb_sync, read_write_buf_sync_1mb, read_write_buf_sync_2mb}, loads::{every100ms, every100us, every10ms, every1ms, every1s, every200ms, every50ms}};
+use crate::{
+    jobs::{
+        read_2mb, read_write_100kb_sync, read_write_1mb_sync, read_write_2mb_nosync,
+        read_write_2mb_sync, read_write_4kb_sync, read_write_4mb_sync, read_write_buf_sync_1mb,
+        read_write_buf_sync_2mb, JobFunction,
+    },
+    loads::{every100ms, every100us, every10ms, every1ms, every1s, every200ms, every50ms, oneshot},
+};
 
 pub fn do_single_phase_run(matches: ArgMatches) {
     let matches = matches.subcommand_matches("single").unwrap();
@@ -50,11 +60,13 @@ pub fn do_single_phase_run(matches: ArgMatches) {
         "read_write_4mb_sync" => Arc::new(read_write_4mb_sync),
         "read_write_buf_sync_1mb" => Arc::new(read_write_buf_sync_1mb),
         "read_write_buf_sync_2mb" => Arc::new(read_write_buf_sync_2mb),
+        "read_2mb" => Arc::new(read_2mb),
         _ => {
             panic!("invalid worker function argument");
         }
     };
     let load_function = match load_type {
+        "oneshot" => oneshot,
         "every100us" => every100us,
         "every1ms" => every1ms,
         "every10ms" => every10ms,

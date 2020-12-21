@@ -41,6 +41,22 @@ pub fn read_write_buf_sync_2mb(file_dir: Arc<PathBuf>, index: usize) {
     read_write_buf_sync_Xkb(file_dir, index, 2000);
 }
 
+pub fn read_2mb(file_dir: Arc<PathBuf>, index: usize) {
+    read_Xkb(file_dir, index, 2000);
+}
+
+pub fn read_Xkb(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u64) {
+    let input_filename = format_input_filename(file_size_kb, index);
+    let input_subdir = format_input_subdir(file_size_kb);
+    let input_filepath = file_dir.join(input_subdir).join(input_filename);
+    let _ = fs::read_to_string(&input_filepath).unwrap_or_else(|_| {
+        panic!(
+            "error reading file to string, path: {}",
+            input_filepath.to_str().unwrap()
+        )
+    });
+}
+
 pub fn read_write_Xkb_nosync(file_dir: Arc<PathBuf>, index: usize, file_size_kb: u64) {
     let input_filename = format_input_filename(file_size_kb, index);
     let input_subdir = format_input_subdir(file_size_kb);
