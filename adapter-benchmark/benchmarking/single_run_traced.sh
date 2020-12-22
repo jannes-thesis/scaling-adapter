@@ -8,7 +8,7 @@ output_prefix=$6
 
 sudo -v
 start_millis=`date +%s%3N`
-nohup ../../target/release/threadpool fixed $pool_size $load_type $worker_function $num_jobs $files_dir > /dev/null 2> /dev/null < /dev/null &
+nohup ../../target/release/threadpool single fixed $pool_size $load_type $worker_function $num_jobs $files_dir > /dev/null 2> /dev/null < /dev/null &
 staprun_pid=$!
 main_pid=$!
 echo "benchmark exe pid: ${main_pid}"

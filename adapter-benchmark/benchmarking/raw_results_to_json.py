@@ -1,4 +1,5 @@
 import json
+import os
 from run_benchmark_traced import BenchmarkParameters, get_bench_params
 
 
@@ -44,12 +45,15 @@ def process_result_files(result_dir, thread_amounts, benchmark_name):
             runtime_ms = float(lines[-1])
             benchmark_run['runtime_s'] = runtime_ms / 1000
             benchmark_run['avg_latency_ms'] = -1
-        with open(systemtap_file) as f:
-            lines = f.readlines()
-            stats = process_systemtap_output(lines)
-            stats_maps = [{'name': key, 'total_time_ms': stats[key][0], 'nr_calls': stats[key][1],
-                           'avg_call_time_ms': stats[key][2]} for key in stats.keys()]
-            benchmark_run['syscall_metrics'] = stats_maps
+        if os.path.exists(systemtap_file):
+            with open(systemtap_file) as f:
+                lines = f.readlines()
+                stats = process_systemtap_output(lines)
+                stats_maps = [{'name': key, 'total_time_ms': stats[key][0], 'nr_calls': stats[key][1],
+                               'avg_call_time_ms': stats[key][2]} for key in stats.keys()]
+        else: 
+            stats_maps = []
+        benchmark_run['syscall_metrics'] = stats_maps
         with open(pidstats_file) as f:
             lines = f.readlines()
             bytes_read, bytes_written, iowait, rchar, wchar = convert_pidstat(lines)

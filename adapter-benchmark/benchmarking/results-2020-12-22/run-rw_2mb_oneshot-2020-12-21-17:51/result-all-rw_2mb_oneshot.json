@@ -1,0 +1,290 @@
+[
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 1
+        },
+        "runtime_s": 284.561,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20931772416,
+            "write_bytes": 20927479808,
+            "rchar": 20927479808,
+            "wchar": 20927479808
+        },
+        "iowait": 14913
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 2
+        },
+        "runtime_s": 232.099,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20865449984,
+            "write_bytes": 20860370944,
+            "rchar": 20860370944,
+            "wchar": 20860370944
+        },
+        "iowait": 11598
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 4
+        },
+        "runtime_s": 238.44,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20951425024,
+            "write_bytes": 20948025344,
+            "rchar": 20948451328,
+            "wchar": 20946354176
+        },
+        "iowait": 11878
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 6
+        },
+        "runtime_s": 238.956,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20894777344,
+            "write_bytes": 20891828224,
+            "rchar": 20891828224,
+            "wchar": 20891828224
+        },
+        "iowait": 11685
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 8
+        },
+        "runtime_s": 226.246,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20861231104,
+            "write_bytes": 20858273792,
+            "rchar": 20858273792,
+            "wchar": 20858273792
+        },
+        "iowait": 11387
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 10
+        },
+        "runtime_s": 293.589,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20961120256,
+            "write_bytes": 20956839936,
+            "rchar": 20956839944,
+            "wchar": 20956839936
+        },
+        "iowait": 15120
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 12
+        },
+        "runtime_s": 232.537,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20967424000,
+            "write_bytes": 20963131392,
+            "rchar": 20963131396,
+            "wchar": 20963131392
+        },
+        "iowait": 11463
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 14
+        },
+        "runtime_s": 252.509,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20863352832,
+            "write_bytes": 20858273792,
+            "rchar": 20860370948,
+            "wchar": 20858273792
+        },
+        "iowait": 12499
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 16
+        },
+        "runtime_s": 227.105,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20909461504,
+            "write_bytes": 20905893888,
+            "rchar": 20906508296,
+            "wchar": 20904411136
+        },
+        "iowait": 11240
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 20
+        },
+        "runtime_s": 232.75,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20964012032,
+            "write_bytes": 20958937088,
+            "rchar": 20958937096,
+            "wchar": 20958937088
+        },
+        "iowait": 11462
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 24
+        },
+        "runtime_s": 246.923,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20959821824,
+            "write_bytes": 20956839936,
+            "rchar": 20956839944,
+            "wchar": 20956839936
+        },
+        "iowait": 12072
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 28
+        },
+        "runtime_s": 232.974,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20966109184,
+            "write_bytes": 20962713600,
+            "rchar": 20963131400,
+            "wchar": 20961034240
+        },
+        "iowait": 11450
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 32
+        },
+        "runtime_s": 240.248,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20949331968,
+            "write_bytes": 20946354176,
+            "rchar": 20946354184,
+            "wchar": 20946354176
+        },
+        "iowait": 11815
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 36
+        },
+        "runtime_s": 226.94,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20873830400,
+            "write_bytes": 20868759552,
+            "rchar": 20868759556,
+            "wchar": 20868759552
+        },
+        "iowait": 11215
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 40
+        },
+        "runtime_s": 238.488,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20940152832,
+            "write_bytes": 20935868416,
+            "rchar": 20935868424,
+            "wchar": 20935868416
+        },
+        "iowait": 11695
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 48
+        },
+        "runtime_s": 246.733,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20936744960,
+            "write_bytes": 20932464640,
+            "rchar": 20933771276,
+            "wchar": 20931674112
+        },
+        "iowait": 12341
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 56
+        },
+        "runtime_s": 232.906,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20947238912,
+            "write_bytes": 20944257024,
+            "rchar": 20944257028,
+            "wchar": 20944257024
+        },
+        "iowait": 11546
+    },
+    {
+        "workload": "rw_2mb_oneshot",
+        "thread_config": {
+            "num_io": 64
+        },
+        "runtime_s": 238.125,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [],
+        "io_throughput": {
+            "read_bytes": 20896907264,
+            "write_bytes": 20893925376,
+            "rchar": 20893925384,
+            "wchar": 20893925376
+        },
+        "iowait": 11848
+    }
+]
