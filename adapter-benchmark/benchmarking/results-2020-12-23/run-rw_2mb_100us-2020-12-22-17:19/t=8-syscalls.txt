@@ -1,0 +1,13 @@
+targets: 1968,1969,1970,1972,1973,1975,1976,1977
+                  SYSCALL      TIME IN MS      COUNT
+                    fsync          625970       6957
+                     read          258947      13909
+                    write           27214       6957
+                   openat           17150      13909
+                   unlink           13882       6960
+                    close              71      13917
+                    statx              67       6952
+                    futex               0        167
+                   munmap               0          8
+                  madvise               0          8
+------------

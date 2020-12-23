@@ -1,0 +1,1088 @@
+[
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 1
+        },
+        "runtime_s": 70.513,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 60791.0,
+                "nr_calls": 18097.0,
+                "avg_call_time_ms": 3.35917555395922
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 425.0,
+                "nr_calls": 9048.0,
+                "avg_call_time_ms": 0.04697170645446507
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 71.0,
+                "nr_calls": 9048.0,
+                "avg_call_time_ms": 0.007847038019451812
+            },
+            {
+                "name": "close",
+                "total_time_ms": 38.0,
+                "nr_calls": 9049.0,
+                "avg_call_time_ms": 0.004199359045198365
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 1.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 1.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 1.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20823478272,
+            "write_bytes": 0,
+            "rchar": 20818427904,
+            "wchar": 0
+        },
+        "iowait": 4859
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 2
+        },
+        "runtime_s": 95.52,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 85672.0,
+                "nr_calls": 18343.0,
+                "avg_call_time_ms": 4.670555525268495
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 434.0,
+                "nr_calls": 9171.0,
+                "avg_call_time_ms": 0.047323083633191584
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 72.0,
+                "nr_calls": 9171.0,
+                "avg_call_time_ms": 0.007850834151128557
+            },
+            {
+                "name": "close",
+                "total_time_ms": 39.0,
+                "nr_calls": 9172.0,
+                "avg_call_time_ms": 0.00425207152202355
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 2.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 2.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 2.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20833161216,
+            "write_bytes": 0,
+            "rchar": 20828913664,
+            "wchar": 0
+        },
+        "iowait": 7349
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 4
+        },
+        "runtime_s": 88.562,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 78811.0,
+                "nr_calls": 17937.0,
+                "avg_call_time_ms": 4.393767073646652
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 415.0,
+                "nr_calls": 8968.0,
+                "avg_call_time_ms": 0.04627564674397859
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 69.0,
+                "nr_calls": 8968.0,
+                "avg_call_time_ms": 0.007694023193577163
+            },
+            {
+                "name": "close",
+                "total_time_ms": 37.0,
+                "nr_calls": 8969.0,
+                "avg_call_time_ms": 0.004125320548556138
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 4.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 4.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 4.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20838150144,
+            "write_bytes": 0,
+            "rchar": 20835205120,
+            "wchar": 0
+        },
+        "iowait": 6726
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 6
+        },
+        "runtime_s": 76.375,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 66545.0,
+                "nr_calls": 17945.0,
+                "avg_call_time_ms": 3.708275285594873
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 467.0,
+                "nr_calls": 8972.0,
+                "avg_call_time_ms": 0.052050824788230046
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 70.0,
+                "nr_calls": 8972.0,
+                "avg_call_time_ms": 0.00780205082478823
+            },
+            {
+                "name": "close",
+                "total_time_ms": 39.0,
+                "nr_calls": 8973.0,
+                "avg_call_time_ms": 0.0043463724506853894
+            },
+            {
+                "name": "futex",
+                "total_time_ms": 0.0,
+                "nr_calls": 14.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 6.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 6.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 6.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20909441024,
+            "write_bytes": 0,
+            "rchar": 20906508288,
+            "wchar": 0
+        },
+        "iowait": 5476
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 8
+        },
+        "runtime_s": 76.554,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 66791.0,
+                "nr_calls": 17951.0,
+                "avg_call_time_ms": 3.720739791655061
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 389.0,
+                "nr_calls": 8975.0,
+                "avg_call_time_ms": 0.043342618384401115
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 72.0,
+                "nr_calls": 8975.0,
+                "avg_call_time_ms": 0.008022284122562675
+            },
+            {
+                "name": "close",
+                "total_time_ms": 40.0,
+                "nr_calls": 8976.0,
+                "avg_call_time_ms": 0.004456327985739751
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 8.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 8.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 8.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20856233984,
+            "write_bytes": 0,
+            "rchar": 20851982336,
+            "wchar": 0
+        },
+        "iowait": 5465
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 10
+        },
+        "runtime_s": 77.389,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 67122.0,
+                "nr_calls": 19439.0,
+                "avg_call_time_ms": 3.452955398940275
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 502.0,
+                "nr_calls": 9719.0,
+                "avg_call_time_ms": 0.051651404465479986
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 77.0,
+                "nr_calls": 9719.0,
+                "avg_call_time_ms": 0.007922625784545735
+            },
+            {
+                "name": "close",
+                "total_time_ms": 41.0,
+                "nr_calls": 9720.0,
+                "avg_call_time_ms": 0.004218106995884774
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 10.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 10.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 10.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20930392064,
+            "write_bytes": 0,
+            "rchar": 20925382664,
+            "wchar": 0
+        },
+        "iowait": 5471
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 12
+        },
+        "runtime_s": 76.785,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 67033.0,
+                "nr_calls": 18071.0,
+                "avg_call_time_ms": 3.709423938907642
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 385.0,
+                "nr_calls": 9035.0,
+                "avg_call_time_ms": 0.04261206419479801
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 69.0,
+                "nr_calls": 9035.0,
+                "avg_call_time_ms": 0.007636967349197565
+            },
+            {
+                "name": "close",
+                "total_time_ms": 38.0,
+                "nr_calls": 9036.0,
+                "avg_call_time_ms": 0.0042054006197432495
+            },
+            {
+                "name": "futex",
+                "total_time_ms": 1.0,
+                "nr_calls": 26.0,
+                "avg_call_time_ms": 0.038461538461538464
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 12.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 12.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 12.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20797526016,
+            "write_bytes": 0,
+            "rchar": 20793262092,
+            "wchar": 0
+        },
+        "iowait": 5479
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 14
+        },
+        "runtime_s": 83.493,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 73475.0,
+                "nr_calls": 18893.0,
+                "avg_call_time_ms": 3.889006510347748
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 404.0,
+                "nr_calls": 9446.0,
+                "avg_call_time_ms": 0.042769426212153294
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 73.0,
+                "nr_calls": 9446.0,
+                "avg_call_time_ms": 0.007728138894770273
+            },
+            {
+                "name": "close",
+                "total_time_ms": 40.0,
+                "nr_calls": 9447.0,
+                "avg_call_time_ms": 0.004234148406901662
+            },
+            {
+                "name": "futex",
+                "total_time_ms": 1.0,
+                "nr_calls": 30.0,
+                "avg_call_time_ms": 0.03333333333333333
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 14.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 14.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 14.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20932521984,
+            "write_bytes": 0,
+            "rchar": 20929576968,
+            "wchar": 0
+        },
+        "iowait": 6106
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 16
+        },
+        "runtime_s": 76.963,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 66903.0,
+                "nr_calls": 18721.0,
+                "avg_call_time_ms": 3.5736873030286844
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 439.0,
+                "nr_calls": 9360.0,
+                "avg_call_time_ms": 0.0469017094017094
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 76.0,
+                "nr_calls": 9360.0,
+                "avg_call_time_ms": 0.00811965811965812
+            },
+            {
+                "name": "close",
+                "total_time_ms": 39.0,
+                "nr_calls": 9361.0,
+                "avg_call_time_ms": 0.004166221557525905
+            },
+            {
+                "name": "futex",
+                "total_time_ms": 1.0,
+                "nr_calls": 34.0,
+                "avg_call_time_ms": 0.029411764705882353
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 16.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 16.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 16.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20766035968,
+            "write_bytes": 0,
+            "rchar": 20761804808,
+            "wchar": 0
+        },
+        "iowait": 5444
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 20
+        },
+        "runtime_s": 101.661,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 91911.0,
+                "nr_calls": 18167.0,
+                "avg_call_time_ms": 5.059228271040898
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 381.0,
+                "nr_calls": 9083.0,
+                "avg_call_time_ms": 0.04194649344930089
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 72.0,
+                "nr_calls": 9083.0,
+                "avg_call_time_ms": 0.007926896399867885
+            },
+            {
+                "name": "close",
+                "total_time_ms": 38.0,
+                "nr_calls": 9084.0,
+                "avg_call_time_ms": 0.004183179216204315
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 20.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 19.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 20.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20943015936,
+            "write_bytes": 0,
+            "rchar": 20937965576,
+            "wchar": 0
+        },
+        "iowait": 8001
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 24
+        },
+        "runtime_s": 89.641,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 79490.0,
+                "nr_calls": 19699.0,
+                "avg_call_time_ms": 4.035230214731712
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 452.0,
+                "nr_calls": 9849.0,
+                "avg_call_time_ms": 0.04589298405929536
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 76.0,
+                "nr_calls": 9849.0,
+                "avg_call_time_ms": 0.007716519443598335
+            },
+            {
+                "name": "close",
+                "total_time_ms": 42.0,
+                "nr_calls": 9850.0,
+                "avg_call_time_ms": 0.004263959390862944
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 26.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 23.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 24.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20942229504,
+            "write_bytes": 0,
+            "rchar": 20937965576,
+            "wchar": 0
+        },
+        "iowait": 6741
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 28
+        },
+        "runtime_s": 83.302,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 73226.0,
+                "nr_calls": 19623.0,
+                "avg_call_time_ms": 3.7316414411659786
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 451.0,
+                "nr_calls": 9811.0,
+                "avg_call_time_ms": 0.04596881051880542
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 73.0,
+                "nr_calls": 9811.0,
+                "avg_call_time_ms": 0.007440627866680257
+            },
+            {
+                "name": "close",
+                "total_time_ms": 40.0,
+                "nr_calls": 9812.0,
+                "avg_call_time_ms": 0.0040766408479412965
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 27.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 15.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 27.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20690571264,
+            "write_bytes": 0,
+            "rchar": 20686307340,
+            "wchar": 0
+        },
+        "iowait": 6066
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 32
+        },
+        "runtime_s": 63.747,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 54074.0,
+                "nr_calls": 18079.0,
+                "avg_call_time_ms": 2.9909840146025775
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 418.0,
+                "nr_calls": 9039.0,
+                "avg_call_time_ms": 0.04624405354574621
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 68.0,
+                "nr_calls": 9039.0,
+                "avg_call_time_ms": 0.007522956079212302
+            },
+            {
+                "name": "close",
+                "total_time_ms": 37.0,
+                "nr_calls": 9040.0,
+                "avg_call_time_ms": 0.004092920353982301
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 32.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 32.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 4.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20861227008,
+            "write_bytes": 0,
+            "rchar": 20856176648,
+            "wchar": 0
+        },
+        "iowait": 4240
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 36
+        },
+        "runtime_s": 101.204,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 91068.0,
+                "nr_calls": 19331.0,
+                "avg_call_time_ms": 4.710982359939993
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 487.0,
+                "nr_calls": 9665.0,
+                "avg_call_time_ms": 0.050387997930677705
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 75.0,
+                "nr_calls": 9665.0,
+                "avg_call_time_ms": 0.007759958613554061
+            },
+            {
+                "name": "close",
+                "total_time_ms": 38.0,
+                "nr_calls": 9666.0,
+                "avg_call_time_ms": 0.0039313056072832605
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 1.0,
+                "nr_calls": 47.0,
+                "avg_call_time_ms": 0.02127659574468085
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 36.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 36.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20963176448,
+            "write_bytes": 0,
+            "rchar": 20958937096,
+            "wchar": 0
+        },
+        "iowait": 7852
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 40
+        },
+        "runtime_s": 84.042,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 74190.0,
+                "nr_calls": 18665.0,
+                "avg_call_time_ms": 3.974819180283954
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 392.0,
+                "nr_calls": 9332.0,
+                "avg_call_time_ms": 0.04200600085726532
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 71.0,
+                "nr_calls": 9332.0,
+                "avg_call_time_ms": 0.007608229747106729
+            },
+            {
+                "name": "close",
+                "total_time_ms": 39.0,
+                "nr_calls": 9333.0,
+                "avg_call_time_ms": 0.004178720668595307
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 0.0,
+                "nr_calls": 55.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 34.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 40.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20815089664,
+            "write_bytes": 0,
+            "rchar": 20810039304,
+            "wchar": 0
+        },
+        "iowait": 6230
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 48
+        },
+        "runtime_s": 70.12,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 60427.0,
+                "nr_calls": 18073.0,
+                "avg_call_time_ms": 3.3434958224976485
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 416.0,
+                "nr_calls": 9036.0,
+                "avg_call_time_ms": 0.046038069942452416
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 68.0,
+                "nr_calls": 9036.0,
+                "avg_call_time_ms": 0.007525453740593183
+            },
+            {
+                "name": "close",
+                "total_time_ms": 39.0,
+                "nr_calls": 9037.0,
+                "avg_call_time_ms": 0.004315591457342038
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 1.0,
+                "nr_calls": 63.0,
+                "avg_call_time_ms": 0.015873015873015872
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 36.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 48.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20762660864,
+            "write_bytes": 0,
+            "rchar": 20757610500,
+            "wchar": 0
+        },
+        "iowait": 4847
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 56
+        },
+        "runtime_s": 63.518,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 53825.0,
+                "nr_calls": 17935.0,
+                "avg_call_time_ms": 3.0011151379983274
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 373.0,
+                "nr_calls": 8967.0,
+                "avg_call_time_ms": 0.04159696665551466
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 70.0,
+                "nr_calls": 8967.0,
+                "avg_call_time_ms": 0.0078064012490242
+            },
+            {
+                "name": "close",
+                "total_time_ms": 36.0,
+                "nr_calls": 8968.0,
+                "avg_call_time_ms": 0.004014272970561998
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 1.0,
+                "nr_calls": 93.0,
+                "avg_call_time_ms": 0.010752688172043012
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 56.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 56.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20634734592,
+            "write_bytes": 0,
+            "rchar": 20629684236,
+            "wchar": 0
+        },
+        "iowait": 4177
+    },
+    {
+        "workload": "read_2mb_oneshot",
+        "thread_config": {
+            "num_io": 64
+        },
+        "runtime_s": 82.593,
+        "avg_latency_ms": -1,
+        "syscall_metrics": [
+            {
+                "name": "read",
+                "total_time_ms": 72863.0,
+                "nr_calls": 17953.0,
+                "avg_call_time_ms": 4.058541747897287
+            },
+            {
+                "name": "openat",
+                "total_time_ms": 456.0,
+                "nr_calls": 8976.0,
+                "avg_call_time_ms": 0.05080213903743316
+            },
+            {
+                "name": "statx",
+                "total_time_ms": 68.0,
+                "nr_calls": 8976.0,
+                "avg_call_time_ms": 0.007575757575757576
+            },
+            {
+                "name": "close",
+                "total_time_ms": 35.0,
+                "nr_calls": 8977.0,
+                "avg_call_time_ms": 0.0038988526233708367
+            },
+            {
+                "name": "munmap",
+                "total_time_ms": 2.0,
+                "nr_calls": 109.0,
+                "avg_call_time_ms": 0.01834862385321101
+            },
+            {
+                "name": "madvise",
+                "total_time_ms": 0.0,
+                "nr_calls": 64.0,
+                "avg_call_time_ms": 0.0
+            },
+            {
+                "name": "sigaltstack",
+                "total_time_ms": 0.0,
+                "nr_calls": 64.0,
+                "avg_call_time_ms": 0.0
+            }
+        ],
+        "io_throughput": {
+            "read_bytes": 20652822528,
+            "write_bytes": 0,
+            "rchar": 20648558600,
+            "wchar": 0
+        },
+        "iowait": 6059
+    }
+]
