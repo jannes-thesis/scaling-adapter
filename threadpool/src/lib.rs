@@ -1,6 +1,7 @@
 pub mod adaptive;
 pub mod fixed;
 pub mod fixed_tracer;
+pub mod inc_tracer;
 pub mod watermark;
 
 pub struct Job {
