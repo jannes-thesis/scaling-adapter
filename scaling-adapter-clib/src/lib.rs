@@ -94,6 +94,7 @@ pub extern "C" fn new_adapter(
 ///
 /// will panic for invalid algo parameter string
 pub extern "C" fn new_default_adapter(algo_params_str: *const c_char) -> bool {
+    init_logging();
     let mut adapter_global = ADAPTER.write().unwrap();
 
     let algo_parameters_str =
