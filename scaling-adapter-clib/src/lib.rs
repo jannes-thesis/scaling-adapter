@@ -1,5 +1,6 @@
 use std::{ffi::CStr, os::raw::c_char, ptr, sync::RwLock};
 
+use std::io::Write;
 use lazy_static::lazy_static;
 use log::debug;
 use scaling_adapter::tracesets::SyscallData;
@@ -62,6 +63,7 @@ pub extern "C" fn new_adapter(
     parameters: &AdapterParameters,
     algo_params_str: *const c_char,
 ) -> bool {
+    init_logging();
     let mut adapter_global = ADAPTER.write().unwrap();
     let (syscalls_vec, calc_f) = convert_params(
         parameters.syscall_nrs,
@@ -170,6 +172,24 @@ pub extern "C" fn close_adapter() {
     assert!((*adapter_global).is_some());
     // this should automatically drop the adapter and thereby free the kernel space resources
     *adapter_global = None;
+}
+
+fn init_logging() {
+    // pass log level via RUST_LOG environment variable
+    env_logger::builder()
+        .format(|buf, record| {
+            let ts = buf.timestamp_millis();
+            let module_path = record.module_path().unwrap_or("");
+            writeln!(
+                buf,
+                "[{} {} {}]: {}",
+                ts,
+                record.level(),
+                module_path,
+                record.args()
+            )
+        })
+        .init();
 }
 
 #[cfg(test)]

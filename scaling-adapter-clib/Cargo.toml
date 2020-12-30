@@ -15,6 +15,7 @@ panic = 'abort'
 [dependencies]
 lazy_static = "1.4.0"
 log = "0.4.11"
+env_logger = "0.7.1"
 
 [dependencies.scaling-adapter]
 path = "../scaling-adapter"
