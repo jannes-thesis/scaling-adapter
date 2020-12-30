@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 INIT_MARKER = '_METRICS_init'
 QUEUE_SIZE_MARKER = '_METRICS_qsize:'
+POOL_SIZE_MARKER = '_METRICS_psize:'
 WCHAR_MARKER = '_METRICS_wchar:'
 RCHAR_MARKER = '_METRICS_rchar:'
 WBYTES_MARKER = '_METRICS_write_bytes:'
@@ -12,7 +13,7 @@ SYSCCOUNT_MARKER = '_METRICS_sysc-count:'
 
 METRIC_MARKERS = {'qsize': QUEUE_SIZE_MARKER, 'wchar': WCHAR_MARKER, 'rchar': RCHAR_MARKER,
                   'wbytes': WBYTES_MARKER, 'rbytes': RBYTES_MARKER, 'blkio_delay': BLKIO_MARKER,
-                  'syscall_time': SYSCTIME_MARKER, 'syscall_count': SYSCCOUNT_MARKER}
+                  'syscall_time': SYSCTIME_MARKER, 'syscall_count': SYSCCOUNT_MARKER, 'psize': POOL_SIZE_MARKER}
 
 
 def get_log_line_time(line: str) -> datetime:
@@ -50,9 +51,10 @@ def parse_result(log_path: str) -> dict[str, list[tuple]]:
     for m in METRIC_MARKERS.keys():
         metric_lines = [
             line for line in log_lines if METRIC_MARKERS[m] in line]
-        time_metric_tuples = [convert_metric_line(
-            line, METRIC_MARKERS[m], start_time) for line in metric_lines]
-        result[m] = time_metric_tuples
+        if len(metric_lines) > 0:
+            time_metric_tuples = [convert_metric_line(
+                line, METRIC_MARKERS[m], start_time) for line in metric_lines]
+            result[m] = time_metric_tuples
     return result
 
 
