@@ -11,9 +11,13 @@ BLKIO_MARKER = '_METRICS_blkio:'
 SYSCTIME_MARKER = '_METRICS_sysc-time:'
 SYSCCOUNT_MARKER = '_METRICS_sysc-count:'
 
+EXTRA_A_MARKER = '_METRICS_A:'
+EXTRA_B_MARKER = '_METRICS_A:'
+
 METRIC_MARKERS = {'qsize': QUEUE_SIZE_MARKER, 'wchar': WCHAR_MARKER, 'rchar': RCHAR_MARKER,
                   'wbytes': WBYTES_MARKER, 'rbytes': RBYTES_MARKER, 'blkio_delay': BLKIO_MARKER,
-                  'syscall_time': SYSCTIME_MARKER, 'syscall_count': SYSCCOUNT_MARKER, 'psize': POOL_SIZE_MARKER}
+                  'syscall_time': SYSCTIME_MARKER, 'syscall_count': SYSCCOUNT_MARKER, 'psize': POOL_SIZE_MARKER,
+                  'extraA': EXTRA_A_MARKER, 'extraB': EXTRA_B_MARKER}
 
 
 def get_log_line_time(line: str) -> datetime:
