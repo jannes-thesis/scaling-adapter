@@ -1,5 +1,5 @@
 extern crate tracesets_sys;
-use std::{collections::HashMap, collections::HashSet, os::raw::c_int, slice};
+use std::{collections::HashMap, collections::HashSet, fs, os::raw::c_int, slice};
 use std::{iter::FromIterator, time::SystemTime};
 
 use tracesets_sys::{
@@ -100,11 +100,41 @@ impl Traceset {
     }
 
     pub fn get_read_bytes(&self) -> u64 {
-        unsafe { (*(*self._traceset).data).read_bytes as u64 }
+        let mut rchars = 0;
+        for tid in &self.targets {
+            let path = format!("/proc/{}/io", tid);
+            let text = fs::read_to_string(path).expect("failed to read from proc");
+            let r_bytes: u64 = text
+                .lines()
+                .find(|line| line.starts_with("rchar"))
+                .expect("did not find read_bytes line")
+                .split(' ')
+                .last()
+                .expect("did not find read_bytes in split")
+                .parse()
+                .expect("parse to u64 failed");
+            rchars += r_bytes;
+        }
+        rchars
     }
 
     pub fn get_write_bytes(&self) -> u64 {
-        unsafe { (*(*self._traceset).data).write_bytes as u64 }
+        let mut wchars = 0;
+        for tid in &self.targets {
+            let path = format!("/proc/{}/io", tid);
+            let text = fs::read_to_string(path).expect("failed to read from proc");
+            let w_bytes: u64 = text
+                .lines()
+                .find(|line| line.starts_with("wchar"))
+                .expect("did not find write_bytes line")
+                .split(' ')
+                .last()
+                .expect("did not find write_bytes in split")
+                .parse()
+                .expect("parse to u64 failed");
+            wchars += w_bytes;
+        }
+        wchars
     }
 
     pub fn get_blkio_delay(&self) -> u64 {
