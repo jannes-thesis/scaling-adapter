@@ -216,7 +216,7 @@ impl IncTracerThreadpool {
         if *nlt_guard > now {
             return;
         }
-        let next_log_time = now.checked_add(Duration::from_secs(1)).unwrap();
+        let next_log_time = now.checked_add(Duration::from_millis(200)).unwrap();
         *nlt_guard = next_log_time;
         drop(nlt_guard);
 
@@ -230,8 +230,8 @@ impl IncTracerThreadpool {
         info!("_METRICS_write_bytes: {}", w_bytes);
         let (rchars, wchars) = get_rw_chars(&tids);
         let snapshot = self.traceset.lock().unwrap().get_snapshot();
-        // info!("_METRICS_rchar: {}", snapshot.read_bytes);
-        // info!("_METRICS_wchar: {}", snapshot.write_bytes);
+        info!("_METRICS_A: {}", snapshot.read_bytes);
+        info!("_METRICS_B: {}", snapshot.write_bytes);
         info!("_METRICS_rchar: {}", rchars);
         info!("_METRICS_wchar: {}", wchars);
         info!("_METRICS_blkio: {}", snapshot.blkio_delay);

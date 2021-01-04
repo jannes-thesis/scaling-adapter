@@ -2,7 +2,11 @@ use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use clap::ArgMatches;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
-use threadpool::{Threadpool, adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_tracer::FixedTracerThreadpool, inc_tracer::IncTracerThreadpool, watermark::WatermarkThreadpool};
+use threadpool::{
+    adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_overhead::FixedOverheadThreadpool,
+    fixed_tracer::FixedTracerThreadpool, inc_tracer::IncTracerThreadpool,
+    watermark::WatermarkThreadpool, Threadpool,
+};
 
 use crate::{
     jobs::{
@@ -38,10 +42,24 @@ pub fn do_single_phase_run(matches: ArgMatches) {
             let pool_size: usize = pool_params.parse().expect("invalid pool size");
             FixedTracerThreadpool::new(pool_size)
         }
+        "fixed-overhead" => {
+            let adapter_params = ScalingParameters::default();
+            let adapter = ScalingAdapter::new(adapter_params.with_check_interval_ms(100)).unwrap();
+            let pool_size: usize = pool_params.parse().expect("invalid pool size");
+            FixedOverheadThreadpool::new(pool_size, adapter)
+        }
         "inc-tracer" => {
             let args = pool_params.split(',').collect::<Vec<&str>>();
-            let interval_ms: u64 = args.get(0).expect("invalid args").parse().expect("invalid args");
-            let pool_size: usize = args.get(1).expect("invalid args").parse().expect("invalid args");
+            let interval_ms: u64 = args
+                .get(0)
+                .expect("invalid args")
+                .parse()
+                .expect("invalid args");
+            let pool_size: usize = args
+                .get(1)
+                .expect("invalid args")
+                .parse()
+                .expect("invalid args");
             IncTracerThreadpool::new(interval_ms, pool_size)
         }
         "watermark" => WatermarkThreadpool::new_untyped(pool_params),
