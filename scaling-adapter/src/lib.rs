@@ -2,6 +2,7 @@
 use std::time::{Duration, SystemTime};
 
 use errors::AdapterError;
+use history::{AveragedMetricsHistory, MetricsHistory};
 use intervals::IntervalMetrics;
 use log::{debug, info};
 use tracesets::{Traceset, TracesetSnapshot};
@@ -14,14 +15,19 @@ pub use parameters::ScalingParameters;
 pub use tracesets;
 
 mod errors;
+mod history;
 mod intervals;
 mod parameters;
+mod statistics;
+
+const INTERVAL_MS: u64 = 200;
 
 pub struct ScalingAdapter {
     parameters: ScalingParameters,
     traceset: Traceset,
     state: AdapterState,
     metrics_history: MetricsHistory,
+    metrics_history_averaged: AveragedMetricsHistory,
     latest_snapshot: TracesetSnapshot,
     latest_snapshot_time: SystemTime,
     recent_invalid_intervals: usize,
@@ -39,6 +45,7 @@ impl ScalingAdapter {
             traceset,
             state: AdapterState::Startup,
             metrics_history: MetricsHistory::new(),
+            metrics_history_averaged: AveragedMetricsHistory::new(),
             latest_snapshot: initial_snapshot,
             latest_snapshot_time: SystemTime::now(),
             recent_invalid_intervals: 0,
@@ -87,7 +94,7 @@ impl ScalingAdapter {
     }
 
     pub fn get_latest_metrics(&self) -> Option<&IntervalMetrics> {
-        self.metrics_history.last().get(0).copied()
+        self.metrics_history.last(None).get(0).copied()
     }
 
     fn scaling_advice_startup(&mut self) -> i32 {
@@ -177,10 +184,14 @@ impl ScalingAdapter {
             .duration_since(self.latest_snapshot_time)
             .map(|duration| duration.as_millis())
             .unwrap_or(0);
+        // record new interval in metrics if interval ms passed
+        if elapsed >= INTERVAL_MS as u128 {
+            self.update();
+        }
+        // if check advice period passed, compute advice
         if elapsed >= self.parameters.check_interval_ms as u128 {
             info!("ADVICE: new advice, enough time elapsed");
             info!("_I_QSIZE: {}", queue_size);
-            self.update();
             // if latest interval not valid (amount targets changed)
             if self.recent_invalid_intervals > 0 {
                 info!("ADVICE: invalid interval (targets changed), advice 0");
@@ -215,81 +226,6 @@ impl ScalingAdapter {
         } else {
             0
         }
-    }
-}
-
-struct MetricsHistory {
-    capacity: usize,
-    buffer: Vec<IntervalMetrics>,
-    // index of latest metricpoint
-    next_index: usize,
-}
-
-impl MetricsHistory {
-    pub fn new() -> Self {
-        let capacity = 20;
-        MetricsHistory {
-            capacity,
-            buffer: Vec::with_capacity(capacity),
-            next_index: 0,
-        }
-    }
-
-    #[allow(unused_must_use)]
-    /// add a new interval metric to the history
-    /// if buffer is full, the oldest entry is removed
-    pub fn add(&mut self, datapoint: IntervalMetrics) {
-        debug!(
-            "adding interval metrics to history at buffer index {}",
-            self.next_index
-        );
-        if self.next_index >= self.buffer.len() {
-            self.buffer.push(datapoint);
-        } else {
-            std::mem::replace(&mut self.buffer[self.next_index], datapoint);
-        }
-        self.next_index = (self.next_index + 1) % self.capacity;
-    }
-
-    /// return the last interval metric datapoints, from newest to oldest
-    pub fn last(&self) -> Vec<&IntervalMetrics> {
-        debug!(
-            "getting last interval metrics, buffer size: {}, current next_index: {}",
-            self.buffer.len(),
-            self.next_index
-        );
-        let buffer_size = self.buffer.len();
-        let mut result = Vec::with_capacity(buffer_size);
-        for i in 0..buffer_size {
-            // maximum index is buffer size - 1, safe to unrwap option
-            result.push(self.get(i).unwrap());
-        }
-        result
-    }
-
-    /// get interval metrics for specified interval
-    /// where index = 0 specifies latest interval, index = 1 previous etc.
-    pub fn get(&self, index: usize) -> Option<&IntervalMetrics> {
-        if index >= self.buffer.len() {
-            return None;
-        }
-        // specified index denotes how many intervals before (next_index - 1)
-        let buffer_index_unconverted = (self.next_index as i32) - 1 - (index as i32);
-        let buffer_index = if buffer_index_unconverted >= 0 {
-            buffer_index_unconverted as usize
-        } else {
-            ((self.capacity as i32) + buffer_index_unconverted) as usize
-        };
-        self.buffer.get(buffer_index)
-    }
-
-    pub fn clear(&mut self) {
-        self.buffer.clear();
-        self.next_index = 0;
-    }
-
-    pub fn size(&self) -> usize {
-        self.buffer.len()
     }
 }
 

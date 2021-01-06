@@ -1,9 +1,10 @@
 #![allow(dead_code)]
-use std::time::{SystemTime};
+use std::time::SystemTime;
 
 use log::{debug, info};
 use tracesets::{SyscallData, TracesetSnapshot};
 
+use crate::statistics::{mean, std_deviation};
 
 /// describes one interval during execution
 /// all data is referring to the timeframe of interval
@@ -44,9 +45,18 @@ impl IntervalData {
         );
         let targets_match = snapshot_earlier.targets.eq(&snapshot_later.targets);
         if targets_match {
-            let read_bytes = subtract_or_zero(snapshot_later.read_bytes, snapshot_earlier.read_bytes, "rb");
-            let write_bytes = subtract_or_zero(snapshot_later.write_bytes, snapshot_earlier.write_bytes, "wb");
-            let blkio_delay = subtract_or_zero(snapshot_later.blkio_delay, snapshot_earlier.blkio_delay, "blkio");
+            let read_bytes =
+                subtract_or_zero(snapshot_later.read_bytes, snapshot_earlier.read_bytes, "rb");
+            let write_bytes = subtract_or_zero(
+                snapshot_later.write_bytes,
+                snapshot_earlier.write_bytes,
+                "wb",
+            );
+            let blkio_delay = subtract_or_zero(
+                snapshot_later.blkio_delay,
+                snapshot_earlier.blkio_delay,
+                "blkio",
+            );
             let amount_targets = snapshot_earlier.targets.len();
             let mut syscalls_data = Vec::new();
             for syscall in snapshot_earlier.syscalls_data.keys() {
@@ -116,8 +126,8 @@ pub struct IntervalMetrics {
 }
 
 impl IntervalMetrics {
-     // can safely use as_millis as u64 (only overflow at unix epoch + half billion years)
-     pub fn start_millis(&self) -> u64 {
+    // can safely use as_millis as u64 (only overflow at unix epoch + half billion years)
+    pub fn start_millis(&self) -> u64 {
         self.interval_start
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("interval start before unix epoch")
@@ -130,5 +140,75 @@ impl IntervalMetrics {
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("interval start before unix epoch")
             .as_millis() as u64
+    }
+
+    pub fn duration_millis(&self) -> u64 {
+        self.end_millis() - self.start_millis()
+    }
+}
+
+// the averages and stddevs of target metrics over several intervals
+pub struct AveragedIntervalMetrics {
+    pub derived_data_avg: IntervalDerivedData,
+    pub derived_data_stddev: IntervalDerivedData,
+    pub interval_start: SystemTime,
+    pub interval_end: SystemTime,
+    pub amount_intervals: usize,
+}
+
+impl AveragedIntervalMetrics {
+    // first metric should be newest, last oldest
+    pub fn compute(interval_metrics: Vec<&IntervalMetrics>) -> Self {
+        if interval_metrics.len() == 0 {
+            panic!("expected at least one interval metrics");
+        }
+        let start = interval_metrics.last().unwrap().interval_start;
+        let end = interval_metrics.first().unwrap().interval_end;
+        // TODO: pass capacity
+        let mut datapoints_each_milli = Vec::new();
+        for m in &interval_metrics {
+            for _x in 0..m.duration_millis() {
+                datapoints_each_milli.push(m.derived_data);
+            }
+        }
+        let avg_m1 = mean(
+            &datapoints_each_milli
+                .iter()
+                .map(|data| data.scale_metric)
+                .collect::<Vec<f64>>(),
+        );
+        let avg_m2 = mean(
+            &datapoints_each_milli
+                .iter()
+                .map(|data| data.reset_metric)
+                .collect::<Vec<f64>>(),
+        );
+        let stddev_m1 = std_deviation(
+            &datapoints_each_milli
+                .iter()
+                .map(|data| data.scale_metric)
+                .collect::<Vec<f64>>(),
+        );
+        let stddev_m2 = std_deviation(
+            &datapoints_each_milli
+                .iter()
+                .map(|data| data.reset_metric)
+                .collect::<Vec<f64>>(),
+        );
+        let derived_data_avg = IntervalDerivedData {
+            scale_metric: avg_m1,
+            reset_metric: avg_m2,
+        };
+        let derived_data_stddev = IntervalDerivedData {
+            scale_metric: stddev_m1,
+            reset_metric: stddev_m2,
+        };
+        Self {
+            derived_data_avg,
+            derived_data_stddev,
+            interval_start: start,
+            interval_end: end,
+            amount_intervals: interval_metrics.len(),
+        }
     }
 }
