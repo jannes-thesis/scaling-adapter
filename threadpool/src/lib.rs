@@ -1,4 +1,5 @@
 pub mod adaptive;
+pub mod adaptive_dummy;
 pub mod fixed;
 pub mod fixed_overhead;
 pub mod fixed_tracer;
