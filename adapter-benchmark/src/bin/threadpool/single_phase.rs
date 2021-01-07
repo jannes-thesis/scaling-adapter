@@ -3,9 +3,9 @@ use std::{path::PathBuf, sync::Arc, time::Instant};
 use clap::ArgMatches;
 use scaling_adapter::{ScalingAdapter, ScalingParameters};
 use threadpool::{
-    adaptive::AdaptiveThreadpool, fixed::FixedThreadpool, fixed_overhead::FixedOverheadThreadpool,
-    fixed_tracer::FixedTracerThreadpool, inc_tracer::IncTracerThreadpool,
-    watermark::WatermarkThreadpool, Threadpool,
+    adaptive::AdaptiveThreadpool, adaptive_dummy::AdaptiveDummyThreadpool, fixed::FixedThreadpool,
+    fixed_overhead::FixedOverheadThreadpool, fixed_tracer::FixedTracerThreadpool,
+    inc_tracer::IncTracerThreadpool, watermark::WatermarkThreadpool, Threadpool,
 };
 
 use crate::{jobs::{
@@ -29,6 +29,26 @@ pub fn do_single_phase_run(matches: ArgMatches) {
             AdaptiveThreadpool::new(
                 ScalingAdapter::new(adapter_params.with_algo_params(pool_params))
                     .expect("failed to construct adapter parameters"),
+            )
+        }
+        "adaptive-dummy" => {
+            let args = pool_params.split(',').collect::<Vec<&str>>();
+            let interval_ms: u64 = args
+                .get(0)
+                .expect("invalid args")
+                .parse()
+                .expect("invalid args");
+            let pool_size: usize = args
+                .get(1)
+                .expect("invalid args")
+                .parse()
+                .expect("invalid args");
+            let adapter_params = ScalingParameters::default();
+            AdaptiveDummyThreadpool::new(
+                ScalingAdapter::new(adapter_params)
+                    .expect("failed to construct adapter parameters"),
+                interval_ms,
+                pool_size,
             )
         }
         "fixed" => {

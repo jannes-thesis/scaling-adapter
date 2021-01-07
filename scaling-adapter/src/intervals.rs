@@ -118,6 +118,12 @@ pub struct IntervalDerivedData {
     pub reset_metric: f64,
 }
 
+fn system_time_to_millis(st: &SystemTime) -> u64 {
+    st.duration_since(SystemTime::UNIX_EPOCH)
+        .expect("interval start before unix epoch")
+        .as_millis() as u64
+}
+
 pub struct IntervalMetrics {
     pub derived_data: IntervalDerivedData,
     pub amount_targets: usize,
@@ -126,20 +132,12 @@ pub struct IntervalMetrics {
 }
 
 impl IntervalMetrics {
-    // can safely use as_millis as u64 (only overflow at unix epoch + half billion years)
     pub fn start_millis(&self) -> u64 {
-        self.interval_start
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("interval start before unix epoch")
-            .as_millis() as u64
+        system_time_to_millis(&self.interval_start)
     }
 
-    // can safely use as_millis as u64 (only overflow at unix epoch + half billion years)
     pub fn end_millis(&self) -> u64 {
-        self.interval_end
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("interval start before unix epoch")
-            .as_millis() as u64
+        system_time_to_millis(&self.interval_end)
     }
 
     pub fn duration_millis(&self) -> u64 {
@@ -148,6 +146,7 @@ impl IntervalMetrics {
 }
 
 // the averages and stddevs of target metrics over several intervals
+#[derive(Debug)]
 pub struct AveragedIntervalMetrics {
     pub derived_data_avg: IntervalDerivedData,
     pub derived_data_stddev: IntervalDerivedData,
@@ -159,13 +158,13 @@ pub struct AveragedIntervalMetrics {
 impl AveragedIntervalMetrics {
     // first metric should be newest, last oldest
     pub fn compute(interval_metrics: Vec<&IntervalMetrics>) -> Self {
-        if interval_metrics.len() == 0 {
+        if interval_metrics.is_empty() {
             panic!("expected at least one interval metrics");
         }
         let start = interval_metrics.last().unwrap().interval_start;
         let end = interval_metrics.first().unwrap().interval_end;
-        // TODO: pass capacity
-        let mut datapoints_each_milli = Vec::new();
+        let duration_millis = system_time_to_millis(&end) - system_time_to_millis(&start);
+        let mut datapoints_each_milli = Vec::with_capacity(duration_millis as usize);
         for m in &interval_metrics {
             for _x in 0..m.duration_millis() {
                 datapoints_each_milli.push(m.derived_data);
@@ -210,5 +209,17 @@ impl AveragedIntervalMetrics {
             interval_end: end,
             amount_intervals: interval_metrics.len(),
         }
+    }
+
+    pub fn start_millis(&self) -> u64 {
+        system_time_to_millis(&self.interval_start)
+    }
+
+    pub fn end_millis(&self) -> u64 {
+        system_time_to_millis(&self.interval_end)
+    }
+
+    pub fn duration_millis(&self) -> u64 {
+        self.end_millis() - self.start_millis()
     }
 }
