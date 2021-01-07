@@ -120,12 +120,12 @@ fn worker_loop(threadpool: Arc<WatermarkThreadpool>) {
             // get next work item and release queue
             work_item = work_queue_reaquired.pop_front();
         }
+        // signal other potentially blocked workers to continue processing / exit
+        threadpool.queue_non_empty.notify_one();
         if threadpool.is_stopping() {
             threadpool
                 .current_size
                 .fetch_sub(1, atomic::Ordering::Relaxed);
-            // signal other potentially blocked workers, so they can exit
-            threadpool.queue_non_empty.notify_one();
             break;
         }
         let mut busy_count = threadpool.busy_workers_count.lock().unwrap();
