@@ -3,7 +3,7 @@ use std::time::{Duration, SystemTime};
 
 use errors::AdapterError;
 use history::{AveragedMetricsHistory, MetricsHistory};
-use intervals::IntervalMetrics;
+use intervals::{AveragedIntervalMetrics, IntervalMetrics};
 use log::{debug, info};
 use tracesets::{Traceset, TracesetSnapshot};
 use AdapterState::Settled;
@@ -20,8 +20,12 @@ mod intervals;
 mod parameters;
 mod statistics;
 
+// duration of interval that snapshots are taken at
 const INTERVAL_MS: u64 = 200;
 
+// metric intervals are diffs of snapshot
+// a metric interval is only valid if over the whole interval the amount of targets is unchanged
+// averaged intervals are averages of metric intervals over param supplied amount of time
 pub struct ScalingAdapter {
     parameters: ScalingParameters,
     traceset: Traceset,
@@ -30,7 +34,8 @@ pub struct ScalingAdapter {
     metrics_history_averaged: AveragedMetricsHistory,
     latest_snapshot: TracesetSnapshot,
     latest_snapshot_time: SystemTime,
-    recent_invalid_intervals: usize,
+    latest_avg_interval_end: SystemTime,
+    recent_invalid_avg_intervals: usize,
 }
 
 // synchronize access by wrapping with Arc<Mutex<_>>
@@ -48,7 +53,8 @@ impl ScalingAdapter {
             metrics_history_averaged: AveragedMetricsHistory::new(),
             latest_snapshot: initial_snapshot,
             latest_snapshot_time: SystemTime::now(),
-            recent_invalid_intervals: 0,
+            latest_avg_interval_end: SystemTime::now(),
+            recent_invalid_avg_intervals: 0,
         })
     }
 
@@ -65,7 +71,7 @@ impl ScalingAdapter {
     ///      update history and return true
     /// else
     ///      return false
-    pub fn update(&mut self) -> bool {
+    pub fn update_history(&mut self) -> bool {
         let snapshot = self.traceset.get_snapshot();
         let snapshot_time = SystemTime::now();
         let interval_data = IntervalData::new(&self.latest_snapshot, &snapshot);
@@ -80,11 +86,9 @@ impl ScalingAdapter {
                     interval_end: snapshot_time,
                 };
                 self.metrics_history.add(history_point);
-                self.recent_invalid_intervals = 0;
                 true
             }
             None => {
-                self.recent_invalid_intervals += 1;
                 false
             }
         };
@@ -95,6 +99,19 @@ impl ScalingAdapter {
 
     pub fn get_latest_metrics(&self) -> Option<&IntervalMetrics> {
         self.metrics_history.last(None).get(0).copied()
+    }
+
+    fn update_avg_history(&mut self) -> bool {
+        let new_intervals = self.metrics_history.last(Some(self.latest_avg_interval_end));
+        if new_intervals.is_empty() {
+            self.recent_invalid_avg_intervals += 1;
+            return false;
+        }
+        self.latest_avg_interval_end = new_intervals.last().unwrap().interval_end;
+        let avgd_interval = AveragedIntervalMetrics::compute(new_intervals);
+        self.metrics_history_averaged.add(avgd_interval);
+        self.recent_invalid_avg_intervals = 0;
+        true
     }
 
     fn scaling_advice_startup(&mut self) -> i32 {
@@ -120,15 +137,15 @@ impl ScalingAdapter {
     fn scaling_advice_exploring(&mut self, direction: Direction) -> i32 {
         // compare latest interval with previous
         // metrics_history must already contain 2 entries
-        let latest = self.metrics_history.get(0).unwrap();
-        let previous = self.metrics_history.get(1).unwrap();
+        let latest = self.metrics_history_averaged.get(0).unwrap();
+        let previous = self.metrics_history_averaged.get(1).unwrap();
         let step_size = match direction {
             Direction::Up => 1,
             Direction::Down => -1,
         };
         // enter scaling state
-        if latest.derived_data.scale_metric * self.parameters.stability_factor
-            > previous.derived_data.scale_metric
+        if latest.derived_data_avg.scale_metric * self.parameters.stability_factor
+            > previous.derived_data_avg.scale_metric
         {
             self.state = AdapterState::Scaling(step_size);
             step_size
@@ -148,8 +165,8 @@ impl ScalingAdapter {
     fn scaling_advice_scaling(&mut self, step_size: i32) -> i32 {
         // compare latest interval with previous
         // metrics_history must already contain 2 entries
-        let latest = self.metrics_history.get(0).unwrap();
-        let previous = self.metrics_history.get(1).unwrap();
+        let latest = self.metrics_history_averaged.get(0).unwrap();
+        let previous = self.metrics_history_averaged.get(1).unwrap();
         let direction = Direction::from_step_size(step_size);
         // step sizes will always grow 1 -> 2 -> 4
         let new_step_size = if step_size.abs() < 4 {
@@ -158,15 +175,15 @@ impl ScalingAdapter {
             step_size
         };
         // scale further
-        if latest.derived_data.scale_metric * self.parameters.stability_factor
-            > previous.derived_data.scale_metric
+        if latest.derived_data_avg.scale_metric * self.parameters.stability_factor
+            > previous.derived_data_avg.scale_metric
         {
             self.state = AdapterState::Scaling(new_step_size);
             new_step_size
         // scale back to previous & enter settled state
         // set no timeout, so next action will be exploring step
-        } else if previous.derived_data.scale_metric * self.parameters.stability_factor
-            > latest.derived_data.scale_metric
+        } else if previous.derived_data_avg.scale_metric * self.parameters.stability_factor
+            > latest.derived_data_avg.scale_metric
             && self.traceset.get_amount_targets() > 1
         {
             self.state = Settled(SystemTime::now(), direction);
@@ -180,23 +197,28 @@ impl ScalingAdapter {
 
     pub fn get_scaling_advice(&mut self, queue_size: i32) -> i32 {
         let now = SystemTime::now();
-        let elapsed = now
+        let elapsed_since_snapshot = now
             .duration_since(self.latest_snapshot_time)
             .map(|duration| duration.as_millis())
             .unwrap_or(0);
         // record new interval in metrics if interval ms passed
-        if elapsed >= INTERVAL_MS as u128 {
-            self.update();
+        if elapsed_since_snapshot >= INTERVAL_MS as u128 {
+            self.update_history();
         }
+        let elapsed_since_latest_avg_interval_end = now
+            .duration_since(self.latest_avg_interval_end)
+            .map(|duration| duration.as_millis())
+            .unwrap_or(0);
         // if check advice period passed, compute advice
-        if elapsed >= self.parameters.check_interval_ms as u128 {
+        if elapsed_since_latest_avg_interval_end >= self.parameters.check_interval_ms as u128 {
+            self.update_avg_history();
             info!("ADVICE: new advice, enough time elapsed");
-            info!("_I_QSIZE: {}", queue_size);
-            // if latest interval not valid (amount targets changed)
-            if self.recent_invalid_intervals > 0 {
-                info!("ADVICE: invalid interval (targets changed), advice 0");
+            // if latest avg interval not valid 
+            if self.recent_invalid_avg_intervals > 0 {
+                info!("ADVICE: invalid averaged interval, advice 0");
                 return 0;
             }
+            info!("_I_QSIZE: {}", queue_size);
             info!("ADVICE: current state: {:?}", self.state);
             let advice = match self.state {
                 AdapterState::Startup => return self.scaling_advice_startup(),
@@ -212,15 +234,19 @@ impl ScalingAdapter {
             };
             info!("ADVICE: new state: {:?}", self.state);
             // at least one recent interval must exists, as we are not in startup state anymore
-            let latest_interval = self.metrics_history.get(0).unwrap();
-            let interval_duration = latest_interval.end_millis() - latest_interval.start_millis();
-            let amount_targets = latest_interval.amount_targets;
-            let m1 = latest_interval.derived_data.scale_metric;
-            let m2 = latest_interval.derived_data.reset_metric;
-            debug!("ADVICE: last interval ms: {}", interval_duration);
+            let latest_avg_interval = self.metrics_history_averaged.get(0).unwrap();
+            let interval_duration = latest_avg_interval.duration_millis();
+            let m1 = latest_avg_interval.derived_data_avg.scale_metric;
+            let m2 = latest_avg_interval.derived_data_avg.reset_metric;
+            let m1_stddev = latest_avg_interval.derived_data_stddev.scale_metric;
+            let m2_stddev = latest_avg_interval.derived_data_stddev.reset_metric;
+            let amount_targets = self.traceset.get_amount_targets();
+            info!("ADVICE: last interval ms: {}", interval_duration);
             info!("_I_PSIZE: {}", amount_targets);
             info!("_I_M1_VAL: {}", m1);
             info!("_I_M2_VAL: {}", m2);
+            info!("_I_M1_STDDEV: {}", m1_stddev);
+            info!("_I_M2_STDDEV: {}", m2_stddev);
             info!("ADVICE: {}", advice);
             advice
         } else {
@@ -373,11 +399,11 @@ mod tests {
         assert!(is_added);
         thread::sleep(time::Duration::from_millis(1000));
         // update adapter and get latest metric, verify scale_metric is > 0
-        let interval_valid = adapter.update();
+        let interval_valid = adapter.update_history();
         // frst interval should not be valid, amount of targets changed
         assert!(!interval_valid);
         thread::sleep(time::Duration::from_millis(2000));
-        let interval_valid = adapter.update();
+        let interval_valid = adapter.update_history();
         // second interval should be valid, amount of targets did not change
         assert!(interval_valid);
         let latest_metrics = adapter
