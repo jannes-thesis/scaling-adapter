@@ -112,6 +112,8 @@ fn worker_loop(threadpool: Arc<AdaptiveThreadpool>) {
                 threadpool.adapt_size();
             }
         }
+        // signal other potentially blocked workers to continue processing / exit
+        threadpool.work_queue_non_empty.notify_one();
         if threadpool.is_stopping() {
             threadpool.workers.lock().unwrap().remove(&worker_pid);
             break;

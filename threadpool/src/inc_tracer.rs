@@ -92,9 +92,9 @@ fn worker_loop(threadpool: Arc<IncTracerThreadpool>) {
             job = job_queue.pop_front();
         }
         drop(job_queue);
+        // signal other potentially blocked workers to continue processing / exit
+        threadpool.queue_non_empty.notify_one();
         if threadpool.is_stopping() {
-            // signal other potentially blocked workers, so they can exit
-            threadpool.queue_non_empty.notify_one();
             break;
         }
         // if threadpool is not stopping, job option can't be none
