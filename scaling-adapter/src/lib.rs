@@ -88,9 +88,7 @@ impl ScalingAdapter {
                 self.metrics_history.add(history_point);
                 true
             }
-            None => {
-                false
-            }
+            None => false,
         };
         self.latest_snapshot = snapshot;
         self.latest_snapshot_time = snapshot_time;
@@ -102,12 +100,14 @@ impl ScalingAdapter {
     }
 
     fn update_avg_history(&mut self) -> bool {
-        let new_intervals = self.metrics_history.last(Some(self.latest_avg_interval_end));
+        let new_intervals = self
+            .metrics_history
+            .last(Some(self.latest_avg_interval_end));
         if new_intervals.is_empty() {
             self.recent_invalid_avg_intervals += 1;
             return false;
         }
-        self.latest_avg_interval_end = new_intervals.last().unwrap().interval_end;
+        self.latest_avg_interval_end = new_intervals.first().unwrap().interval_end;
         let avgd_interval = AveragedIntervalMetrics::compute(new_intervals);
         self.metrics_history_averaged.add(avgd_interval);
         self.recent_invalid_avg_intervals = 0;
@@ -120,13 +120,33 @@ impl ScalingAdapter {
     }
 
     fn scaling_advice_settled(&mut self, last_direction: Direction) -> i32 {
-        match last_direction {
-            Direction::Up => {
+        let latest = self.metrics_history_averaged.get(0).unwrap();
+        let previous = self.metrics_history_averaged.get(1).unwrap();
+        let direction = if latest.derived_data_avg.scale_metric * 0.95
+            > previous.derived_data_avg.scale_metric
+        {
+            // if factored throughput higher in new interval
+            Direction::Up
+        } else if previous.derived_data_avg.scale_metric * 0.95
+            > latest.derived_data_avg.scale_metric
+            || latest.derived_data_stddev.scale_metric * 0.8
+                > previous.derived_data_stddev.scale_metric
+        {
+            // if factored throughput lower in new interval
+            // or factored stddev higher in new interval
+            Direction::Down
+        } else {
+            // if throughput within stability bounds and factored stddev has not increased
+            // do explore in opposite than last direction
+            last_direction.get_opposite()
+        };
+        match direction {
+            Direction::Down => {
                 debug!("{}", "Exploring DOWN");
                 self.state = AdapterState::Exploring(Direction::Down);
                 -1
             }
-            Direction::Down => {
+            Direction::Up => {
                 debug!("{}", "Exploring UP");
                 self.state = AdapterState::Exploring(Direction::Up);
                 1
@@ -143,15 +163,19 @@ impl ScalingAdapter {
             Direction::Up => 1,
             Direction::Down => -1,
         };
-        // enter scaling state
+        // if higher factored perf: enter scaling state
         if latest.derived_data_avg.scale_metric * self.parameters.stability_factor
             > previous.derived_data_avg.scale_metric
         {
             self.state = AdapterState::Scaling(step_size);
             step_size
+        // if (lower perf and exploring down) or exploring up:
         // scale back to previous & enter settled state
         // set timeout for next explore move
-        } else {
+        } else if (previous.derived_data_avg.scale_metric > latest.derived_data_avg.scale_metric
+            && direction == Direction::Down)
+            || direction == Direction::Up
+        {
             self.state = Settled(
                 SystemTime::now()
                     .checked_add(Duration::from_millis(2000))
@@ -159,6 +183,11 @@ impl ScalingAdapter {
                 direction,
             );
             -step_size
+        }
+        // if same or higher perf while exploring down:
+        // keep exploring downwards with step size one
+        else {
+            step_size
         }
     }
 
@@ -168,7 +197,7 @@ impl ScalingAdapter {
         let latest = self.metrics_history_averaged.get(0).unwrap();
         let previous = self.metrics_history_averaged.get(1).unwrap();
         let direction = Direction::from_step_size(step_size);
-        // step sizes will always grow 1 -> 2 -> 4
+        // step sizes will always grow 1 -> 2 -> 3 -> 4
         let new_step_size = if step_size.abs() < 4 {
             step_size + 1
         } else {
@@ -180,15 +209,8 @@ impl ScalingAdapter {
         {
             self.state = AdapterState::Scaling(new_step_size);
             new_step_size
-        // scale back to previous & enter settled state
-        // set no timeout, so next action will be exploring step
-        } else if previous.derived_data_avg.scale_metric * self.parameters.stability_factor
-            > latest.derived_data_avg.scale_metric
-            && self.traceset.get_amount_targets() > 1
-        {
-            self.state = Settled(SystemTime::now(), direction);
-            -step_size
         // enter settled state
+        // set no timeout, so next action will be exploring step
         } else {
             self.state = Settled(SystemTime::now(), direction);
             0
@@ -205,6 +227,9 @@ impl ScalingAdapter {
         if elapsed_since_snapshot >= INTERVAL_MS as u128 {
             self.update_history();
         }
+        else {
+            return 0;
+        }
         let elapsed_since_latest_avg_interval_end = now
             .duration_since(self.latest_avg_interval_end)
             .map(|duration| duration.as_millis())
@@ -213,7 +238,7 @@ impl ScalingAdapter {
         if elapsed_since_latest_avg_interval_end >= self.parameters.check_interval_ms as u128 {
             self.update_avg_history();
             info!("ADVICE: new advice, enough time elapsed");
-            // if latest avg interval not valid 
+            // if latest avg interval not valid
             if self.recent_invalid_avg_intervals > 0 {
                 info!("ADVICE: invalid averaged interval, advice 0");
                 return 0;
@@ -255,7 +280,7 @@ impl ScalingAdapter {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum Direction {
     Up,
     Down,
