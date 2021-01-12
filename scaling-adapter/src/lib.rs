@@ -115,19 +115,19 @@ impl ScalingAdapter {
     }
 
     fn scaling_advice_startup(&mut self) -> i32 {
-        self.state = AdapterState::Scaling(1);
+        self.state = AdapterState::Scaling(2);
         1
     }
 
     fn scaling_advice_settled(&mut self, last_direction: Direction) -> i32 {
         let latest = self.metrics_history_averaged.get(0).unwrap();
         let previous = self.metrics_history_averaged.get(1).unwrap();
-        let direction = if latest.derived_data_avg.scale_metric * 0.95
+        let direction = if latest.derived_data_avg.scale_metric * self.parameters.stability_factor
             > previous.derived_data_avg.scale_metric
         {
             // if factored throughput higher in new interval
             Direction::Up
-        } else if previous.derived_data_avg.scale_metric * 0.95
+        } else if previous.derived_data_avg.scale_metric * self.parameters.stability_factor
             > latest.derived_data_avg.scale_metric
             || latest.derived_data_stddev.scale_metric * 0.8
                 > previous.derived_data_stddev.scale_metric
@@ -203,7 +203,7 @@ impl ScalingAdapter {
         } else {
             step_size
         };
-        // scale further
+        // if higher factored perf, scale further
         if latest.derived_data_avg.scale_metric * self.parameters.stability_factor
             > previous.derived_data_avg.scale_metric
         {
