@@ -1,5 +1,5 @@
 description: |
-  Fourth version of the scaling adapter.
+  Fourth (b) version of the scaling adapter.
   Starts with pool size 1 and the enters Scaling state.
   Scaling state: scaling with increasing step size (capped at 4)
   When no significant performance improvement is gained it settles at last pool size.

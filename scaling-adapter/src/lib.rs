@@ -209,6 +209,12 @@ impl ScalingAdapter {
         {
             self.state = AdapterState::Scaling(new_step_size);
             new_step_size
+        // if scaling down and no perf loss
+        // keep scaling down with same step size
+        } else if latest.derived_data_avg.scale_metric > previous.derived_data_avg.scale_metric
+            && step_size < 0
+        {
+            step_size
         // enter settled state
         // set no timeout, so next action will be exploring step
         } else {
@@ -226,8 +232,7 @@ impl ScalingAdapter {
         // record new interval in metrics if interval ms passed
         if elapsed_since_snapshot >= INTERVAL_MS as u128 {
             self.update_history();
-        }
-        else {
+        } else {
             return 0;
         }
         let elapsed_since_latest_avg_interval_end = now
