@@ -16,5 +16,9 @@ algorithm_parameters:
                  (the higher the more sensitive, must be between 0 and 1 exclusive)
     name: stability_factor
 algorithm_parameter_combos:
+  - [800, 0.97]
+  - [800, 0.93]
   - [1000, 0.9]
   - [1000, 0.95]
+  - [1500, 0.9]
+  - [1500, 0.95]
