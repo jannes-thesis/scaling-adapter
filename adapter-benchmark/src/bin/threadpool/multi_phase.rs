@@ -16,7 +16,7 @@ use threadpool::{
 use crate::{
     jobs::read_write_100kb_sync,
     jobs::read_write_buf_sync_1mb,
-    jobs::{read_write_2mb_nosync, read_write_2mb_sync, read_write_buf_sync_2mb},
+    jobs::{read_2mb, read_write_2mb_nosync, read_write_2mb_sync, read_write_buf_sync_2mb},
     loads::every100ms,
     loads::every100us,
     loads::every1ms,
@@ -26,6 +26,37 @@ enum BgProcess {
     NotYetStarted,
     Running(Child),
     Killed,
+}
+
+fn read_rwbuf_read_2mb(threadpool: Arc<dyn Threadpool>, num_jobs: usize, output_dir: PathBuf) {
+    let output_dir = Arc::new(output_dir);
+    let read_function = Arc::new(read_2mb);
+    let rwsync_function = Arc::new(read_write_2mb_sync);
+    let num_jobs_f = num_jobs as f64;
+    for i in 0..num_jobs {
+        let path = output_dir.clone();
+        let i_f = i as f64;
+        let job = if i_f < num_jobs_f * 0.33 || i_f > num_jobs_f * 0.66 {
+            let f = read_function.clone();
+            Job {
+                function: Box::new(move || {
+                    let p = path.clone();
+                    f(p, i);
+                }),
+            }
+        } else {
+            let f = rwsync_function.clone();
+            Job {
+                function: Box::new(move || {
+                    let p = path.clone();
+                    f(p, i);
+                }),
+            }
+        };
+        threadpool.submit_job(job);
+    }
+    threadpool.wait_completion();
+    threadpool.destroy();
 }
 
 fn sync_nosync_sync_2mb(threadpool: Arc<dyn Threadpool>, num_jobs: usize, output_dir: PathBuf) {
@@ -232,6 +263,7 @@ pub fn do_multi_phase_run(matches: ArgMatches) {
     match workload {
         "lml-rw_buf_100ms" => lml_rw_buf_100ms(thread_pool, num_jobs, output_dir),
         "lml-rw_100kb" => lml_rw_100kb(thread_pool, num_jobs, output_dir),
+        "r_rw_r_2mb" => read_rwbuf_read_2mb(thread_pool, num_jobs, output_dir),
         "rw_buf_1mb_100ms_bgload_25-75" => rw_buf_1mb_100ms_bgload(
             thread_pool,
             num_jobs,
