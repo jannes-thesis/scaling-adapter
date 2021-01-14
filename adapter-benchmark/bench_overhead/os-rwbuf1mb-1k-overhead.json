@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "command": "../../target/release/threadpool single fixed-overhead 16 oneshot read_write_buf_sync_1mb 1000 /ssd2/adapter-benchmark/files",
+      "mean": 71.05189505493499,
+      "stddev": 15.660669679164258,
+      "median": 64.507653216735,
+      "user": 2.071973955,
+      "system": 34.341959105,
+      "min": 52.799253912735004,
+      "max": 91.732677169735,
+      "times": [
+        63.920973911735004,
+        64.507653216735,
+        82.29891706373499,
+        52.799253912735004,
+        91.732677169735
+      ]
+    }
+  ]
+}
