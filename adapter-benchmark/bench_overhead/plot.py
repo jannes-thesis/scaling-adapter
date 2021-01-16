@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 
-workloads = {'rw4kb300k': 'os-rw4kb-300k', 'rwbuf1mb1k': '100ms-rwbuf1mb-1k'}
+workloads = {'rw4kb300k': 'os-rw4kb-300k', 'rwbuf2mb2k': 'os-rwbuf2mb-2k',
+             'read2mb30k': 'os-read2mb-30k', 'rw2mb10k': 'os-rw2mb-10k',
+             'rw2mb-nosync20k': 'os-rwnosync2mb-20k'}
 
 if __name__ == '__main__':
     workload_names = []
@@ -24,7 +26,7 @@ if __name__ == '__main__':
     x = np.arange(len(workload_names))  # the label locations
     width = 0.35  # the width of the bars
     
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(20, 10))
     rects1 = ax.bar(x - width/2, fixed_means, width, label='without', yerr=fixed_stddevs)
     rects2 = ax.bar(x + width/2, overhead_means, width, label='with', yerr=overhead_stddevs)
     
@@ -51,4 +53,4 @@ if __name__ == '__main__':
     
     autolabel(rects1)
     autolabel(rects2)
-    fig.savefig('result.png')
+    fig.savefig('result3.png')
