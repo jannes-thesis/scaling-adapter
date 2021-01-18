@@ -1,0 +1,10 @@
+targets: 10014,10015
+                  SYSCALL      TIME IN MS      COUNT
+                     read          267843      57736
+                   openat            1348      28867
+                    statx             220      28867
+                    close             115      28869
+                   munmap               0          2
+                  madvise               0          2
+              sigaltstack               0          2
+------------
