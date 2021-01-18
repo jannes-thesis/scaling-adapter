@@ -42,9 +42,20 @@ python run_benchmark_traced.py rw_nosync_2mb_oneshot
 # echo "RUNNING 4kb rw sync oneshot"
 # python run_benchmark_traced.py rw_4kb_oneshot
 echo "RUNNING 2mb read oneshot"
+echo "1/3"
+python run_benchmark_traced.py read_2mb_oneshot
+echo "1/3"
+python run_benchmark_traced.py read_2mb_oneshot
+echo "1/3"
 python run_benchmark_traced.py read_2mb_oneshot
 echo "RUNNING 2mb rw sync oneshot"
+echo "1/3"
 python run_benchmark_traced.py rw_2mb_oneshot
+echo "2/3"
+python run_benchmark_traced.py rw_2mb_oneshot
+echo "3/3"
+python run_benchmark_traced.py rw_2mb_oneshot
+<<<<<<< HEAD
 echo "RUNNING 2mb rw nosync oneshot"
 python run_benchmark_traced.py rw_nosync_2mb_oneshot
 echo "RUNNING 2mb rw sync 100us"
@@ -67,6 +78,22 @@ echo "2/3"
 python run_benchmark_traced.py rw_2mb_oneshot
 echo "3/3"
 python run_benchmark_traced.py rw_2mb_oneshot
+# echo "RUNNING 2mb rw nosync oneshot"
+# python run_benchmark_traced.py rw_nosync_2mb_oneshot
+# echo "RUNNING 2mb rw sync 100us"
+# python run_benchmark_traced.py rw_2mb_100us
+# echo "RUNNING 2mb rw buf sync oneshot"
+# python run_benchmark_traced.py rw_buf_2mb_oneshot
+# echo "RUNNING 4kb rw sync oneshot"
+# python run_benchmark_traced.py rw_4kb_oneshot
+echo "RUNNING 2mb rw nosync oneshot"
+python run_benchmark_traced.py rw_nosync_2mb_oneshot
+echo "RUNNING 2mb rw sync 100us"
+python run_benchmark_traced.py rw_2mb_100us
+echo "RUNNING 2mb rw buf sync oneshot"
+python run_benchmark_traced.py rw_buf_2mb_oneshot
+echo "RUNNING 4kb rw sync oneshot"
+python run_benchmark_traced.py rw_4kb_oneshot
 # echo "RUNNING 2mb rw nosync oneshot"
 # python run_benchmark_traced.py rw_nosync_2mb_oneshot
 # echo "RUNNING 2mb rw sync 100us"
