@@ -4,13 +4,13 @@ import shutil
 from matplotlib import pyplot
 from parse_log import parse_to_timeseries
 from derived import timeseries_to_rate_all, timeseries_to_derived
-from graphs import plot_timeseries_multiple, plot_rwchar_rate
+from graphs import plot_timeseries_multiple, plot_rwchar_rate, plot_iosyscalls_rate, plot_iosyscalls_calltime
 
 
 def single_plot(metric, output_name, log_names):
     if len(log_names) != 2:
         raise Exception('amount logs not equal to 2')
-    fig, axs = pyplot.subplots(nrows=1, ncols=2, figsize=(20, 10))
+    fig, axs = pyplot.subplots(nrows=1, ncols=2, figsize=(30, 10))
     if 'rwchar-rate' in metric:
         if metric == 'rwchar-rate':
             omit = False
@@ -23,6 +23,25 @@ def single_plot(metric, output_name, log_names):
             parsed = parse_to_timeseries(log_name)
             derived = timeseries_to_derived(parsed)
             plot_rwchar_rate(derived, parsed, axs[i], workload, omit)
+        fig.tight_layout()
+        fig.savefig(output_name)
+        pyplot.close(fig)
+    elif metric == 'iosyscalls-rate':
+        for i, log_name in enumerate(log_names):
+            workload = log_name.split('.')[0]
+            parsed = parse_to_timeseries(log_name)
+            original_rates = timeseries_to_rate_all(parsed)
+            plot_iosyscalls_rate(original_rates, parsed, axs[i], workload)
+        fig.tight_layout()
+        fig.savefig(output_name)
+        pyplot.close(fig)
+    elif metric == 'iosyscalls-calltime':
+        for i, log_name in enumerate(log_names):
+            workload = log_name.split('.')[0]
+            parsed = parse_to_timeseries(log_name)
+            derived = timeseries_to_derived(parsed)
+            plot_iosyscalls_calltime(derived, parsed, axs[i], workload)
+        fig.tight_layout()
         fig.savefig(output_name)
         pyplot.close(fig)
     else: 
