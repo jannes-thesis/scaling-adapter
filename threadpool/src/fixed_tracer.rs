@@ -173,7 +173,7 @@ impl FixedTracerThreadpool {
         if *nlt_guard > now {
             return;
         }
-        let next_log_time = now.checked_add(Duration::from_secs(1)).unwrap();
+        let next_log_time = now.checked_add(Duration::from_millis(200)).unwrap();
         *nlt_guard = next_log_time;
         drop(nlt_guard);
 

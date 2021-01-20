@@ -225,15 +225,15 @@ impl IncTracerThreadpool {
         let psize = self.workers.lock().unwrap().len();
         info!("_METRICS_psize: {}", psize);
         let tids = self.workers.lock().unwrap().clone();
-        let (r_bytes, w_bytes) = get_rw_bytes(&tids);
-        info!("_METRICS_read_bytes: {}", r_bytes);
-        info!("_METRICS_write_bytes: {}", w_bytes);
-        let (rchars, wchars) = get_rw_chars(&tids);
+        // let (r_bytes, w_bytes) = get_rw_bytes(&tids);
+        info!("_METRICS_read_bytes: {}", 0);
+        info!("_METRICS_write_bytes: {}", 0);
+        // let (rchars, wchars) = get_rw_chars(&tids);
         let snapshot = self.traceset.lock().unwrap().get_snapshot();
         info!("_METRICS_A: {}", snapshot.read_bytes);
         info!("_METRICS_B: {}", snapshot.write_bytes);
-        info!("_METRICS_rchar: {}", rchars);
-        info!("_METRICS_wchar: {}", wchars);
+        info!("_METRICS_rchar: {}", snapshot.read_bytes);
+        info!("_METRICS_wchar: {}", snapshot.write_bytes);
         info!("_METRICS_blkio: {}", snapshot.blkio_delay);
         let total_syscall_time: u64 = snapshot
             .syscalls_data
