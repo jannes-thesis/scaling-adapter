@@ -1,31 +1,26 @@
 from typing import Union
 from matplotlib import pyplot
 from matplotlib.axes import Axes
-import numpy
 
 
 number = Union[float, int]
 
 def get_avgd_over_x(xys: list[tuple[int, float]], interval_ms: int) -> list[tuple[int, float]]:
-    last_timestamp = 0
-    x_diffs = []
-    last_x = 0
-    last_ys = []
-    xs = []
-    ys = []
+    last_x = -1 
+    ys_per_milli = []
     for x, y in xys:
-        x_diffs.append(x - last_x)
-        last_ys.append(y)
-        if x > last_timestamp + interval_ms:
-            weighted_sum = sum([tpl[0] * tpl[1] for tpl in list(zip(last_ys, x_diffs))])
-            duration = x - last_timestamp
-            ys.append(weighted_sum / duration)
-            xs.append(x)
-            last_timestamp = x
-            x_diffs = []
-            last_ys = []
+        for _i in range(last_x, x):
+            ys_per_milli.append(y)
         last_x = x
-    return list(zip(xs, ys))
+    xs = []
+    ys_avgd = []
+    interval_end = interval_ms # the first timestamp of following interval
+    while interval_end < len(ys_per_milli):
+        y_avgd = sum(ys_per_milli[interval_end-interval_ms:interval_end]) / interval_ms
+        xs.append(interval_end - 1)
+        ys_avgd.append(y_avgd)
+        interval_end += interval_ms
+    return list(zip(xs, ys_avgd))
 
 
 def plot_timeseries_multiple(result: list[tuple[int, dict[str, number]]], save_path: str, title_suffix: str):
@@ -66,18 +61,18 @@ def plot_rwchar_rate(derived: list[tuple[int, dict[str, number]]],
                     ys_filtered.append(ys[i])
             xs = xs_filtered
             ys = ys_filtered
+    workload = workload.split('_')[-1]
+    ax.plot(xs, ys, 'r-')
+
     ax3 = ax.twinx()
-    xy3s = get_avgd_over_x(list(zip([tpl[0] for tpl in derived], ys)), 5000)
+    xy3s = get_avgd_over_x(list(zip([int(x * 1000) for x in xs], ys)), 2000)
     x3s = [tpl[0] / 1000 for tpl in xy3s]
     y3s = [tpl[1] for tpl in xy3s]
     ax3.plot(x3s, y3s, 'g-')
-    # window_width = 51
-    # cumsums = numpy.cumsum(numpy.insert(numpy.array(xs), 0, 0)) 
-    # moving_averages = (cumsums[window_width:] - cumsums[:-window_width]) / window_width
-    # y3s = ys[25:-25]
-    # ax3.plot(moving_averages, y3s, 'g-')
-    workload = workload.split('_')[-1]
-    ax.plot(xs, ys, 'r-')
+    top, bottom = ax.get_ylim()
+    ax3.set_ylim(top, bottom)
+    ax3.axes.yaxis.set_visible(False)
+
     ax.set_xlabel('runtime in seconds')
     ax.set_ylabel(f'rwchar/sec')
     ax.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
@@ -96,6 +91,16 @@ def plot_iosyscalls_rate(rates: list[tuple[int, dict[str, number]]],
         ax2.set_ylabel('pool size')
     workload = workload.split('_')[-1]
     ax.plot(xs, ys, 'r-')
+
+    ax3 = ax.twinx()
+    xy3s = get_avgd_over_x(list(zip([int(x * 1000) for x in xs], ys)), 2000)
+    x3s = [tpl[0] / 1000 for tpl in xy3s]
+    y3s = [tpl[1] for tpl in xy3s]
+    ax3.plot(x3s, y3s, 'g-')
+    top, bottom = ax.get_ylim()
+    ax3.set_ylim(top, bottom)
+    ax3.axes.yaxis.set_visible(False)
+
     ax.set_xlabel('runtime in seconds')
     ax.set_ylabel(f'iosyscalls/sec')
     ax.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
@@ -114,6 +119,16 @@ def plot_iosyscalls_calltime(derived: list[tuple[int, dict[str, number]]],
         ax2.set_ylabel('pool size')
     workload = workload.split('_')[-1]
     ax.plot(xs, ys, 'r-')
+
+    ax3 = ax.twinx()
+    xy3s = get_avgd_over_x(list(zip([int(x * 1000) for x in xs], ys)), 2000)
+    x3s = [tpl[0] / 1000 for tpl in xy3s]
+    y3s = [tpl[1] for tpl in xy3s]
+    ax3.plot(x3s, y3s, 'g-')
+    top, bottom = ax.get_ylim()
+    ax3.set_ylim(top, bottom)
+    ax3.axes.yaxis.set_visible(False)
+
     ax.set_xlabel('runtime in seconds')
     ax.set_ylabel(f'iosyscalls time/call in ms')
     ax.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
