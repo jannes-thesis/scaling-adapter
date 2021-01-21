@@ -1,5 +1,5 @@
 description: |
-  Fourth version of the scaling adapter.
+  Sixth version of the scaling adapter.
   Starts with pool size 1 and the enters Scaling state.
   Scaling state: scaling with increasing step size (capped at 4)
   When no significant performance improvement is gained it settles at last pool size.
@@ -7,6 +7,7 @@ description: |
   If Exploring step gains performance, enter Scaling mode again.
 
   Uses smaller intervals of 200ms that are averaged over the chosen interval length.
+  Ignore averaged interval where performance dropped sharply
 
 algorithm_parameters: 
   -
@@ -17,8 +18,5 @@ algorithm_parameters:
     name: stability_factor
 algorithm_parameter_combos:
   - [800, 0.97]
-  - [800, 0.93]
-  - [1000, 0.9]
   - [1000, 0.95]
-  - [1500, 0.9]
-  - [1500, 0.95]
+  - [2000, 0.95]

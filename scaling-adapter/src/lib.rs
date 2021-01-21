@@ -122,7 +122,10 @@ impl ScalingAdapter {
     fn scaling_advice_settled(&mut self, last_direction: Direction) -> i32 {
         let latest = self.metrics_history_averaged.get(0).unwrap();
         let previous = self.metrics_history_averaged.get(1).unwrap();
-        let direction = if latest.derived_data_avg.scale_metric * self.parameters.stability_factor
+        let direction = if latest.derived_data_avg.scale_metric < 0.3 * previous.derived_data_avg.scale_metric {
+            // on sharp perf drop: remain settled, and do explore next round
+            return 0;
+        } else if latest.derived_data_avg.scale_metric * self.parameters.stability_factor
             > previous.derived_data_avg.scale_metric
         {
             // if factored throughput higher in new interval
@@ -197,6 +200,11 @@ impl ScalingAdapter {
         let latest = self.metrics_history_averaged.get(0).unwrap();
         let previous = self.metrics_history_averaged.get(1).unwrap();
         let direction = Direction::from_step_size(step_size);
+        // on sharp perf drop: reset to step_size 1 and keep scaling state
+        if latest.derived_data_avg.scale_metric < 0.3 * previous.derived_data_avg.scale_metric {
+            self.state = AdapterState::Scaling(1);
+            return 1;
+        }
         // step sizes will always grow 1 -> 2 -> 3 -> 4
         let new_step_size = if step_size.abs() < 4 {
             step_size + 1
