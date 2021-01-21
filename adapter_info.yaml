@@ -1,12 +1,12 @@
 description: |
-  Fourth version of the scaling adapter.
+  Fifth version of the scaling adapter.
   Starts with pool size 1 and the enters Scaling state.
   Scaling state: scaling with increasing step size (capped at 4)
   When no significant performance improvement is gained it settles at last pool size.
   When in Settled state enter Exploring state from time to time (both down/up).
   If Exploring step gains performance, enter Scaling mode again.
 
-  Uses smaller intervals of 200ms that are averaged over the chosen interval length.
+  Uses smaller intervals of 200ms that are medianed over the chosen interval length.
 
 algorithm_parameters: 
   -

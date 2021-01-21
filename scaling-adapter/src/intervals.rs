@@ -4,7 +4,7 @@ use std::time::SystemTime;
 use log::{debug, info};
 use tracesets::{SyscallData, TracesetSnapshot};
 
-use crate::statistics::{mean, std_deviation};
+use crate::statistics::{mean, median, std_deviation};
 
 /// describes one interval during execution
 /// all data is referring to the timeframe of interval
@@ -170,7 +170,7 @@ impl AveragedIntervalMetrics {
                 datapoints_each_milli.push(m.derived_data);
             }
         }
-        let avg_m1 = mean(
+        let median_m1 = median(
             &datapoints_each_milli
                 .iter()
                 .map(|data| data.scale_metric)
@@ -195,7 +195,7 @@ impl AveragedIntervalMetrics {
                 .collect::<Vec<f64>>(),
         );
         let derived_data_avg = IntervalDerivedData {
-            scale_metric: avg_m1,
+            scale_metric: median_m1,
             reset_metric: avg_m2,
         };
         let derived_data_stddev = IntervalDerivedData {

@@ -4,6 +4,13 @@ pub fn mean(values: &[f64]) -> f64 {
     sum / count as f64
 }
 
+pub fn median(values: &[f64]) -> f64 {
+    let mut vec = values.to_vec();
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let middle = values.len() / 2;
+    *vec.get(middle).unwrap()
+}
+
 pub fn std_deviation(values: &[f64]) -> f64 {
     let mean = mean(values);
     let count = values.len();
