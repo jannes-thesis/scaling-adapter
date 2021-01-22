@@ -8,14 +8,11 @@ use threadpool::{
     watermark::WatermarkThreadpool, Threadpool,
 };
 
-use crate::{
-    jobs::{
+use crate::{jobs::{
         read_2mb, read_write_100kb_sync, read_write_1mb_sync, read_write_2mb_nosync,
         read_write_2mb_sync, read_write_4kb_sync, read_write_4mb_sync, read_write_buf_sync_1mb,
         read_write_buf_sync_2mb, JobFunction,
-    },
-    loads::{every100ms, every100us, every10ms, every1ms, every1s, every200ms, every50ms, oneshot},
-};
+    }, loads::{every100ms, every100us, every10ms, every1ms, every1s, every200ms, every30ms, every50ms, every5ms, oneshot}};
 
 pub fn do_single_phase_run(matches: ArgMatches) {
     let matches = matches.subcommand_matches("single").unwrap();
@@ -90,7 +87,9 @@ pub fn do_single_phase_run(matches: ArgMatches) {
         "oneshot" => oneshot,
         "every100us" => every100us,
         "every1ms" => every1ms,
+        "every5ms" => every5ms,
         "every10ms" => every10ms,
+        "every30ms" => every30ms,
         "every50ms" => every50ms,
         "every100ms" => every100ms,
         "every200ms" => every200ms,

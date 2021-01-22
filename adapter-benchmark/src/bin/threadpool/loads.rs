@@ -42,6 +42,15 @@ pub fn every1ms(
     every_X_millis(threadpool, job_function, out_dir, num_items, 1)
 }
 
+pub fn every5ms(
+    threadpool: Arc<dyn Threadpool>,
+    job_function: Arc<JobFunction>,
+    out_dir: Arc<PathBuf>,
+    num_items: usize,
+) {
+    every_X_millis(threadpool, job_function, out_dir, num_items, 5)
+}
+
 pub fn every10ms(
     threadpool: Arc<dyn Threadpool>,
     job_function: Arc<JobFunction>,
@@ -49,6 +58,15 @@ pub fn every10ms(
     num_items: usize,
 ) {
     every_X_millis(threadpool, job_function, out_dir, num_items, 10)
+}
+
+pub fn every30ms(
+    threadpool: Arc<dyn Threadpool>,
+    job_function: Arc<JobFunction>,
+    out_dir: Arc<PathBuf>,
+    num_items: usize,
+) {
+    every_X_millis(threadpool, job_function, out_dir, num_items, 30)
 }
 
 pub fn every50ms(
