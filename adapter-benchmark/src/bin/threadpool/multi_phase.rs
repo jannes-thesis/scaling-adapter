@@ -13,19 +13,41 @@ use threadpool::{
     watermark::WatermarkThreadpool, Job, Threadpool,
 };
 
-use crate::{
-    jobs::read_write_100kb_sync,
-    jobs::read_write_buf_sync_1mb,
-    jobs::{read_2mb, read_write_2mb_nosync, read_write_2mb_sync, read_write_buf_sync_2mb},
-    loads::every100ms,
-    loads::every100us,
-    loads::every1ms,
-};
+use crate::{jobs::read_write_100kb_sync, jobs::read_write_buf_sync_1mb, jobs::{read_2mb, read_write_2mb_nosync, read_write_2mb_sync, read_write_buf_sync_2mb}, loads::every100ms, loads::every100us, loads::{every1ms, every30ms}};
 
 enum BgProcess {
     NotYetStarted,
     Running(Child),
     Killed,
+}
+
+fn rw2mb_30ms_oneshot(threadpool: Arc<dyn Threadpool>, num_jobs: usize, output_dir: PathBuf) {
+    let output_dir = Arc::new(output_dir);
+    let rw_function = Arc::new(read_write_2mb_sync);
+    every30ms(
+        threadpool.clone(),
+        rw_function.clone(),
+        output_dir.clone(),
+        num_jobs / 2 ,
+    );
+    threadpool.wait_completion();
+    println!("phase 1 done");
+    for i in num_jobs / 2 + 1..num_jobs {
+        let path = output_dir.clone();
+        let job = {
+            let f = rw_function.clone();
+            Job {
+                function: Box::new(move || {
+                    let p = path.clone();
+                    f(p, i);
+                }),
+            }
+        };
+        threadpool.submit_job(job);
+    }
+    threadpool.wait_completion();
+    println!("phase 2 done");
+    threadpool.destroy();
 }
 
 fn rw_rwbuf_rw_2mb(threadpool: Arc<dyn Threadpool>, num_jobs: usize, output_dir: PathBuf) {
@@ -295,6 +317,7 @@ pub fn do_multi_phase_run(matches: ArgMatches) {
         "lml-rw_buf_100ms" => lml_rw_buf_100ms(thread_pool, num_jobs, output_dir),
         "lml-rw_100kb" => lml_rw_100kb(thread_pool, num_jobs, output_dir),
         "r_rw_r_2mb" => read_rwbuf_read_2mb(thread_pool, num_jobs, output_dir),
+        "rw2mb_30ms_oneshot" => rw2mb_30ms_oneshot(thread_pool, num_jobs, output_dir),
         "rw_rwb_rw_2mb" => rw_rwbuf_rw_2mb(thread_pool, num_jobs, output_dir),
         "rw_buf_1mb_100ms_bgload_25-75" => rw_buf_1mb_100ms_bgload(
             thread_pool,
