@@ -140,7 +140,7 @@
         "workload_name": "oneshot",
         "worker_function": "read_write_2mb_nosync",
         "amount_files": 30000,
-        "worker_threads": [ 1, 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32],
+        "worker_threads": [ 1, 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 36, 40, 48, 56, 64 ],
         "files_dir": "/ssd2/adapter-benchmark/files"
     },
     "read_2mb_oneshot": {
