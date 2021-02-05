@@ -100,15 +100,18 @@ impl ScalingAdapter {
     }
 
     fn update_avg_history(&mut self) -> bool {
-        let new_intervals = self
+        let now_minus_averaging_duration = SystemTime::now()
+            .checked_sub(Duration::from_millis(self.parameters.averaging_duration))
+            .expect("invalid duration when subtracting averaging duration from now");
+        let intervals_to_avg = self
             .metrics_history
-            .last(Some(self.latest_avg_interval_end));
-        if new_intervals.is_empty() {
+            .last(Some(now_minus_averaging_duration));
+        if intervals_to_avg.is_empty() {
             self.recent_invalid_avg_intervals += 1;
             return false;
         }
-        self.latest_avg_interval_end = new_intervals.first().unwrap().interval_end;
-        let avgd_interval = AveragedIntervalMetrics::compute(new_intervals);
+        self.latest_avg_interval_end = intervals_to_avg.first().unwrap().interval_end;
+        let avgd_interval = AveragedIntervalMetrics::compute(intervals_to_avg);
         self.metrics_history_averaged.add(avgd_interval);
         self.recent_invalid_avg_intervals = 0;
         true
@@ -226,8 +229,7 @@ impl ScalingAdapter {
         // record new interval in metrics if interval ms passed
         if elapsed_since_snapshot >= INTERVAL_MS as u128 {
             self.update_history();
-        }
-        else {
+        } else {
             return 0;
         }
         let elapsed_since_latest_avg_interval_end = now

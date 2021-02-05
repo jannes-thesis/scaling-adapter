@@ -13,7 +13,7 @@ pub struct MetricsHistory {
 
 impl MetricsHistory {
     pub fn new() -> Self {
-        let capacity = 20;
+        let capacity = 100;
         MetricsHistory {
             capacity,
             buffer: Vec::with_capacity(capacity),

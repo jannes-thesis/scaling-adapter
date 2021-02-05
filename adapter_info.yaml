@@ -1,24 +1,33 @@
 description: |
-  Fourth version of the scaling adapter.
+  Seventh version of the scaling adapter.
   Starts with pool size 1 and the enters Scaling state.
   Scaling state: scaling with increasing step size (capped at 4)
   When no significant performance improvement is gained it settles at last pool size.
   When in Settled state enter Exploring state from time to time (both down/up).
   If Exploring step gains performance, enter Scaling mode again.
-
   Uses smaller intervals of 200ms that are averaged over the chosen interval length.
 
+  Addition over 4th version:
+  Average not over check_interval_ms but add extra parameter to enable
+  averaging over longer periods than the update frequency.
+
 algorithm_parameters: 
-  -
-    description: The duration until the adapter records a new averaged interval
+  - description: The duration until the adapter records a new averaged interval
     name: check_interval_ms
   - description: The factor which determines sensitivity to target metric changes
                  (the higher the more sensitive, must be between 0 and 1 exclusive)
     name: stability_factor
+  - description: The interval length of the averaged interval (metrics get average over
+                 all recording intervals that span t - averaged_duration when updated at t)
+    name: averaged_duration
 algorithm_parameter_combos:
-  - [800, 0.97]
-  - [800, 0.93]
-  - [1000, 0.9]
-  - [1000, 0.95]
-  - [1500, 0.9]
-  - [1500, 0.95]
+  - [800, 0.97, 3000]
+  - [800, 0.97, 5000]
+  - [1000, 0.9, 3000]
+  - [1000, 0.9, 5000]
+  - [1000, 0.95, 3000]
+  - [1000, 0.95, 5000]
+  - [1000, 0.97, 3000]
+  - [1000, 0.97, 5000]
+  - [1500, 0.95, 3000]
+  - [1500, 0.95, 5000]
