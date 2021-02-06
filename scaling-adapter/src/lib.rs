@@ -169,12 +169,15 @@ impl ScalingAdapter {
         {
             self.state = AdapterState::Scaling(step_size);
             step_size
-        // if (lower perf and exploring down) or exploring up:
+        // if (lower perf and exploring down) OR exploring up
+        // OR avg syscall time significantly increased:
         // scale back to previous & enter settled state
         // set timeout for next explore move
         } else if (previous.derived_data_avg.scale_metric > latest.derived_data_avg.scale_metric
             && direction == Direction::Down)
             || direction == Direction::Up
+            || (latest.derived_data_avg.reset_metric * self.parameters.stability_factor
+                > previous.derived_data_avg.reset_metric)
         {
             self.state = Settled(
                 SystemTime::now()
@@ -209,9 +212,24 @@ impl ScalingAdapter {
         {
             self.state = AdapterState::Scaling(new_step_size);
             new_step_size
+        } 
+        // if avg syscall time significantly increased AND scaling down
+        // then scale back and enter settled state
+        else if (step_size < 0)
+            && (latest.derived_data_avg.reset_metric * self.parameters.stability_factor
+                > previous.derived_data_avg.reset_metric)
+        {
+            self.state = Settled(
+                SystemTime::now()
+                    .checked_add(Duration::from_millis(2000))
+                    .unwrap(),
+                direction,
+            );
+            -step_size
+        }
         // enter settled state
         // set no timeout, so next action will be exploring step
-        } else {
+        else {
             self.state = Settled(SystemTime::now(), direction);
             0
         }
@@ -226,8 +244,7 @@ impl ScalingAdapter {
         // record new interval in metrics if interval ms passed
         if elapsed_since_snapshot >= INTERVAL_MS as u128 {
             self.update_history();
-        }
-        else {
+        } else {
             return 0;
         }
         let elapsed_since_latest_avg_interval_end = now

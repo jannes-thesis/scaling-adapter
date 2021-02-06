@@ -21,10 +21,11 @@ impl Default for ScalingParameters {
             let interval_ms = data.end_millis() - data.start_millis();
             let throughput = rw_bytes as f64 / interval_ms as f64;
             let syscall_count: u32 = data.syscalls_data.iter().map(|sd| sd.count).sum();
-            let syscall_count_rate = syscall_count as f64 / interval_ms as f64;
+            let syscall_time: u64 = data.syscalls_data.iter().map(|sd| sd.total_time).sum();
+            let syscall_avg_calltime = syscall_count as f64 / syscall_time as f64;
             IntervalDerivedData {
                 scale_metric: throughput,
-                reset_metric: syscall_count_rate,
+                reset_metric: syscall_avg_calltime,
             }
         });
         ScalingParameters {
